@@ -44,6 +44,7 @@ CREATE TABLE DeptEmployee (
     plate_number VARCHAR(20) NOT NULL,
     lot_id       INT         NOT NULL,
     CONSTRAINT pk_dept_employee  PRIMARY KEY (employee_id),
+    CONSTRAINT uq_de_plate       UNIQUE (plate_number),
     CONSTRAINT fk_de_vehicle     FOREIGN KEY (plate_number)
         REFERENCES Vehicle (plate_number)
         ON DELETE RESTRICT
@@ -91,6 +92,7 @@ CREATE TABLE AptResident (
     lot_id       INT         NOT NULL,
     unit_number  VARCHAR(20) NOT NULL,
     CONSTRAINT pk_apt_resident PRIMARY KEY (resident_id),
+    CONSTRAINT uq_ar_plate     UNIQUE (plate_number),
     CONSTRAINT fk_ar_vehicle   FOREIGN KEY (plate_number)
         REFERENCES Vehicle (plate_number)
         ON DELETE RESTRICT
@@ -160,9 +162,9 @@ CREATE TABLE Payment (
     payment_id    INT         NOT NULL AUTO_INCREMENT,
     record_id     INT         NOT NULL,
     raw_fee       INT         NOT NULL,
-    discount_rate FLOAT       NOT NULL DEFAULT 0,
+    discount_rate DECIMAL(3,2) NOT NULL DEFAULT 0.00,
     final_fee     INT         NOT NULL,
-    method        VARCHAR(20) NOT NULL,
+    method        ENUM('card', 'cash', 'app', 'season_pass', 'resident_free') NOT NULL,
     CONSTRAINT pk_payment        PRIMARY KEY (payment_id),
     CONSTRAINT uq_payment_record UNIQUE (record_id),
     CONSTRAINT fk_pay_record     FOREIGN KEY (record_id)
@@ -190,17 +192,33 @@ BEGIN
     END IF;
 END$$
 
--- UPDATE 시: end_date 변경으로 만료되면 비활성화,
---            아직 유효하면 활성화
+-- UPDATE 시: end_date 가 바뀐 경우에만 is_active 재계산
+--            다른 컬럼만 수정할 때는 is_active 를 건드리지 않음
 CREATE TRIGGER trg_season_pass_expire_update
 BEFORE UPDATE ON SeasonPass
 FOR EACH ROW
 BEGIN
-    IF NEW.end_date < CURDATE() THEN
-        SET NEW.is_active = FALSE;
-    ELSE
-        SET NEW.is_active = TRUE;
+    IF NEW.end_date != OLD.end_date THEN
+        IF NEW.end_date < CURDATE() THEN
+            SET NEW.is_active = FALSE;
+        ELSE
+            SET NEW.is_active = TRUE;
+        END IF;
     END IF;
 END$$
 
 DELIMITER ;
+
+-- ============================================================
+-- 인덱스 설계
+-- ============================================================
+
+-- 잔여석 조회 시 lot_id + spot_type + is_occupied 를 항상 같이 쓰므로
+-- 세 컬럼 복합 인덱스로 전체 스캔 없이 바로 접근
+CREATE INDEX IF NOT EXISTS idx_spot_avail
+    ON ParkingSpot (lot_id, spot_type, is_occupied);
+
+-- 번호판으로 현재 주차 중인 기록 찾을 때 (exit_time IS NULL 조건)
+CREATE INDEX IF NOT EXISTS idx_record_active
+    ON ParkingRecord (plate_number, exit_time);
+
