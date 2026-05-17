@@ -15,11 +15,12 @@ cd parking/sql
 
 ```bash
 mysql -u root -p < 01_schema.sql      # 테이블 DDL + CHECK 제약
-mysql -u root -p < 02_triggers.sql    # 트리거 (is_occupied 동기화, SeasonPass 만료)
+mysql -u root -p < 02_triggers.sql    # 트리거 (만료, 점유 동기화, 미납 차단, 정산 일관성)
 mysql -u root -p < 03_procedures.sql  # 저장 프로시저 (입차/출차 정산)
 mysql -u root -p < 04_views.sql       # 뷰 (시간대별 혼잡도)
 mysql -u root -p < 05_indexes.sql     # 인덱스
 mysql -u root -p < 06_dummy_data.sql  # 더미 데이터
+mysql -u root -p < 07_events.sql      # 이벤트 (정기권 만료 일배치)
 ```
 
 > `-p` 뒤에 본인 MySQL 비밀번호를 입력하면 됩니다.  
@@ -35,8 +36,9 @@ mysql -u root -p parking_db -e "SHOW TABLES;"
 | 파일 | 내용 |
 |---|---|
 | `01_schema.sql` | 테이블 DDL, FK, CHECK 제약 |
-| `02_triggers.sql` | 트리거 4개 |
+| `02_triggers.sql` | 트리거 6개 (만료 INSERT/UPDATE, 점유 동기화 IN/OUT, 미납 차단, 정산 일관성) |
 | `03_procedures.sql` | 저장 프로시저 2개 (sp_park_enter, sp_park_exit) |
 | `04_views.sql` | 뷰 1개 (v_hourly_congestion) |
-| `05_indexes.sql` | 복합 인덱스 8개 |
+| `05_indexes.sql` | 인덱스 8개 |
 | `06_dummy_data.sql` | 테스트용 더미 데이터 |
+| `07_events.sql` | 이벤트 1개 (ev_season_pass_daily_expire) |
