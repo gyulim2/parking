@@ -1,11 +1,26 @@
 -- ============================================================
--- parking_db 더미 데이터
+-- parking_db 더미 데이터 (구버전 — 스키마 변경 전)
+--
+-- ★ 주의: 이 파일은 스키마 리팩토링 이전 버전이다.
+--          현재 스키마(01_schema.sql)와 구조가 다른 부분이 있어
+--          그대로 실행하면 오류가 발생한다.
+--
+--  구버전과 현재의 주요 차이점:
+--    ① SeasonPass 에 lot_id 컬럼이 있었음 → 현재는 제거됨 (3NF 정규화)
+--    ② AptResident 에 lot_id, unit_number 컬럼이 직접 있었음
+--       → 현재는 AptUnit 테이블을 별도로 분리하고 unit_id(FK)로 연결
+--    ③ ParkingRecord 에 resident_id 컬럼이 있었음 → 현재는 제거됨
+--    ④ is_occupied 수동 UPDATE 가 있었음
+--       → 현재는 트리거(trg_spot_occupied_on_enter)가 자동 처리
+--    ⑤ Payment 에 discount_reason 컬럼이 없었음 → 현재는 추가됨
+--
+--  현재 사용 중인 더미 데이터는 06_dummy_data.sql 을 참조.
 -- ============================================================
 
 USE parking_db;
 
 -- ============================================================
--- 1. ParkingLot  (2개)
+-- 1. ParkingLot  (주차장 2개)
 -- ============================================================
 INSERT INTO ParkingLot (lot_id, name, lot_type) VALUES
     (1, 'A 백화점 주차장', 'department'),
@@ -13,8 +28,10 @@ INSERT INTO ParkingLot (lot_id, name, lot_type) VALUES
 
 -- ============================================================
 -- 2. ParkingSpot  (각 주차장 15개, 총 30개)
+--    ▶ spot_id 는 AUTO_INCREMENT 로 1~30 이 자동 부여됨
+--    ▶ is_occupied 초기값 FALSE (트리거 없이 수동 UPDATE 로 관리했던 시절)
 -- ============================================================
--- A 백화점 (lot_id=1): B1·B2층, A·B·C 구역
+-- A 백화점 (lot_id=1): B1(-1)·B2(-2)층, A·B·C 구역
 INSERT INTO ParkingSpot (lot_id, floor, zone, spot_type, is_occupied) VALUES
     -- B1층 A구역
     (1, -1, 'A', 'general',  FALSE),  -- spot_id 1
@@ -53,22 +70,22 @@ INSERT INTO ParkingSpot (lot_id, floor, zone, spot_type, is_occupied) VALUES
     (2,  2, 'Q', 'ev',       FALSE);  -- 30
 
 -- ============================================================
--- 3. Vehicle  (10개)
+-- 3. Vehicle  (차량 10개)
 -- ============================================================
 INSERT INTO Vehicle (plate_number, is_disabled, is_ev) VALUES
-    ('12가3456', FALSE, FALSE),  -- 일반 (백화점 직원)
-    ('34나5678', FALSE, FALSE),  -- 일반 (백화점 직원)
-    ('56다7890', FALSE, TRUE),   -- 전기차 (백화점 직원)
-    ('78라1234', FALSE, FALSE),  -- 일반 (아파트 입주민)
-    ('90마5678', FALSE, TRUE),   -- 전기차 (아파트 입주민)
-    ('11바9012', TRUE,  FALSE),  -- 장애인 (아파트 입주민)
-    ('22사3456', FALSE, FALSE),  -- 일반 (일반 방문객)
-    ('33아7890', FALSE, FALSE),  -- 일반 (일반 방문객)
-    ('44자1234', TRUE,  FALSE),  -- 장애인 (일반 방문객)
-    ('55차5678', FALSE, TRUE);   -- 전기차 (일반 방문객)
+    ('12가3456', FALSE, FALSE),
+    ('34나5678', FALSE, FALSE),
+    ('56다7890', FALSE, TRUE),
+    ('78라1234', FALSE, FALSE),
+    ('90마5678', FALSE, TRUE),
+    ('11바9012', TRUE,  FALSE),
+    ('22사3456', FALSE, FALSE),
+    ('33아7890', FALSE, FALSE),
+    ('44자1234', TRUE,  FALSE),
+    ('55차5678', FALSE, TRUE);
 
 -- ============================================================
--- 4. DeptEmployee  (3명)
+-- 4. DeptEmployee  (백화점 직원 3명)
 -- ============================================================
 INSERT INTO DeptEmployee (employee_id, plate_number, lot_id) VALUES
     (1, '12가3456', 1),
@@ -76,7 +93,9 @@ INSERT INTO DeptEmployee (employee_id, plate_number, lot_id) VALUES
     (3, '56다7890', 1);
 
 -- ============================================================
--- 5. SeasonPass  (3개: active 2, expired 1)
+-- 5. SeasonPass  (정기권 3개)
+--    ★ 구버전: lot_id 컬럼이 존재했음
+--       현재 스키마에서는 lot_id 가 없으므로 이 INSERT 는 실행 불가
 -- ============================================================
 INSERT INTO SeasonPass (employee_id, lot_id, start_date, end_date, is_active, monthly_fee) VALUES
     (1, 1, '2025-01-01', '2026-06-30', TRUE,  100000),  -- 유효
@@ -84,7 +103,10 @@ INSERT INTO SeasonPass (employee_id, lot_id, start_date, end_date, is_active, mo
     (3, 1, '2024-01-01', '2024-12-31', FALSE, 100000);  -- 만료
 
 -- ============================================================
--- 6. AptResident  (3명)
+-- 6. AptResident  (아파트 입주민 3명)
+--    ★ 구버전: lot_id, unit_number 컬럼이 AptResident 에 직접 있었음
+--       현재 스키마에서는 AptUnit 을 별도 테이블로 분리하고 unit_id(FK) 를 사용
+--       → 이 INSERT 는 현재 스키마에서 실행 불가
 -- ============================================================
 INSERT INTO AptResident (resident_id, plate_number, lot_id, unit_number) VALUES
     (1, '78라1234', 2, '101동 501호'),
@@ -92,7 +114,9 @@ INSERT INTO AptResident (resident_id, plate_number, lot_id, unit_number) VALUES
     (3, '11바9012', 2, '103동 201호');
 
 -- ============================================================
--- 7. ParkingRecord  (10개: 완료 8, 주차 중 2)
+-- 7. ParkingRecord  (입출차 기록 10개)
+--    ★ 구버전: resident_id 컬럼이 있었음 (입주민 대납 기능 지원)
+--       현재 스키마에서는 resident_id 가 제거됨 → 이 INSERT 는 실행 불가
 -- ============================================================
 INSERT INTO ParkingRecord
     (record_id, plate_number, spot_id, resident_id, user_type, entry_time, exit_time)
@@ -111,34 +135,32 @@ VALUES
     (9,  '33아7890',  7, NULL, 'general',  '2026-05-13 09:00:00', NULL),
     (10, '55차5678', 13,    1, 'visitor',  '2026-05-13 10:30:00', NULL);
 
--- 현재 주차 중인 spot is_occupied 반영
+-- ★ 구버전: is_occupied 를 수동으로 UPDATE 했음
+--    현재 스키마에서는 트리거(trg_spot_occupied_on_enter)가 자동 처리
 UPDATE ParkingSpot SET is_occupied = TRUE WHERE spot_id IN (7, 13);
 
 -- ============================================================
--- 8. Payment  (완료된 8개 기록에 대해)
+-- 8. Payment  (정산 내역 8건)
+--    ★ 구버전: discount_reason 컬럼이 없었고, discount_rate 만 있었음
+--       현재 스키마에서는 discount_reason 이 NOT NULL 컬럼으로 추가됨
+--       → 이 INSERT 는 현재 스키마에서 실행 불가
 -- ============================================================
--- 요금 기준: 30분당 3,000원
--- employee: 정기권 → 0원 (discount_rate = 1.0, final_fee = 0)
--- resident: 무료 자동 입출차 → 0원 (discount_rate = 1.0, final_fee = 0)
--- 장애인(is_disabled=TRUE): 50% 할인
--- general/visitor: 정가
-
 INSERT INTO Payment
     (payment_id, record_id, raw_fee, discount_rate, final_fee, method)
 VALUES
-    -- record 1: employee 12가3456, 9시간 → 18단위 × 3000 = 54000 → 정기권 무료
+    -- record 1: 직원1, 9시간 → 54000 → 정기권 무료
     (1, 1, 54000, 1.0,   0, 'season_pass'),
-    -- record 2: employee 34나5678, 9시간
+    -- record 2: 직원2, 9시간 → 정기권 무료
     (2, 2, 54000, 1.0,   0, 'season_pass'),
-    -- record 3: employee 56다7890, 9시간
+    -- record 3: 직원3, 9시간 → 구버전에서는 정기권으로 처리(현재와 다름, 현재는 만료로 정가)
     (3, 3, 54000, 1.0,   0, 'season_pass'),
-    -- record 4: resident 78라1234, 12시간 → 무료
+    -- record 4: 입주민1, 12시간 → 무료
     (4, 4, 72000, 1.0,   0, 'resident_free'),
-    -- record 5: resident 90마5678, 13.17시간 ≈ 26.3 → 올림 27단위 × 3000 = 81000 → 무료
+    -- record 5: 입주민2, 27단위 → 무료
     (5, 5, 81000, 1.0,   0, 'resident_free'),
-    -- record 6: resident 11바9012 (장애인 입주민), 5시간 → 무료
+    -- record 6: 입주민3, 5시간 → 무료
     (6, 6, 30000, 1.0,   0, 'resident_free'),
-    -- record 7: general 22사3456, 2.5시간 → 5단위 × 3000 = 15000 → 정가
+    -- record 7: 일반 방문객, 2.5시간 → 정가 15000
     (7, 7, 15000, 0.0, 15000, 'card'),
-    -- record 8: general 44자1234 (장애인), 1시간 → 2단위 × 3000 = 6000 → 50% 할인
+    -- record 8: 장애인 방문객, 1시간 → 50% 할인 → 3000
     (8, 8,  6000, 0.5,  3000, 'card');
