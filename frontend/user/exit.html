@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>주차 출차 · 정산</title>
+  <style>
+    body { margin: 0; font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; }
+    #wrap { width: 600px; margin: 40px auto; }
+    .nav { margin-bottom: 16px; font-size: 0.9em; }
+    .nav a { color: #555; text-decoration: none; }
+
+    table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+    td, th { border: 1px solid #ccc; padding: 8px 12px; }
+    th { background: #f5f5f5; width: 130px; text-align: left; }
+
+    input[type=text], select { width: 100%; padding: 6px; box-sizing: border-box; }
+    input[type=button] { padding: 8px 22px; cursor: pointer; margin-right: 6px; }
+
+    #result { display: none; margin-top: 28px; }
+    #result h3 { margin: 0 0 12px; }
+    .final-row th, .final-row td { font-weight: bold; font-size: 1.05em; }
+    .discount-cell { color: #c0392b; }
+    #msg { color: #d32f2f; margin-top: 8px; display: block; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+
+<div class="nav">
+  <a href="../index.html">← 메인</a> &nbsp;|&nbsp; <a href="enter.html">입차 →</a>
+</div>
+
+<h2>주차 출차 · 정산</h2>
+
+<table>
+  <tr>
+    <th>차량 번호판</th>
+    <td>
+      <input type="text" id="plate" maxlength="9" placeholder="12가3456"
+             onkeydown="if(event.key==='Enter') lookupRecord()" />
+    </td>
+  </tr>
+  <tr id="record-row" style="display:none">
+    <th>주차 정보</th>
+    <td id="record-info">—</td>
+  </tr>
+  <tr>
+    <th>결제 수단</th>
+    <td>
+      <select id="method">
+        <option value="">선택하세요</option>
+        <option value="card">카드</option>
+        <option value="cash">현금</option>
+        <option value="app">앱 결제</option>
+        <option value="season_pass">정기권</option>
+        <option value="resident_free">입주민 무료</option>
+      </select>
+    </td>
+  </tr>
+</table>
+
+<input type="button" value="조회" onclick="lookupRecord()" />
+<input type="button" id="btn-exit" value="출차 · 정산" onclick="submitExit()" disabled />
+<input type="button" value="초기화" onclick="resetAll()" />
+<span id="msg"></span>
+
+<!-- 정산 결과 -->
+<div id="result">
+  <h3>정산 결과</h3>
+  <table>
+    <tr><th>차량 번호</th><td id="r-plate">—</td></tr>
+    <tr><th>입차 시각</th><td id="r-entry">—</td></tr>
+    <tr><th>출차 시각</th><td id="r-exit">—</td></tr>
+    <tr><th>주차 시간</th><td id="r-minutes">—</td></tr>
+    <tr><th>기본 요금</th><td id="r-raw">—</td></tr>
+    <tr><th>할인 사유</th><td id="r-reason" class="discount-cell">—</td></tr>
+    <tr><th>할인율</th><td id="r-discount">—</td></tr>
+    <tr class="final-row"><th>최종 요금</th><td id="r-final">—</td></tr>
+  </table>
+  <br />
+  <input type="button" value="처음으로" onclick="resetAll()" />
+</div>
+
+</div>
+<script>
+  const API = '/api';
+  let recordId = null;
+
+  const reasonKo = {
+    season_pass  : '정기권',
+    resident_free: '입주민 무료',
+    disabled     : '장애인 할인',
+    none         : '없음',
+  };
+
+  async function lookupRecord() {
+    const plate = document.getElementById('plate').value.trim();
+    if (!plate) { setMsg('번호판을 입력하세요.'); return; }
+
+    setMsg('조회 중...');
+    try {
+      const res  = await fetch(`${API}/records/active?plate_number=${encodeURIComponent(plate)}`);
+      const json = await res.json();
+      if (!json.ok) { setMsg(json.error || '주차 중인 차량이 없습니다.'); clearRecord(); return; }
+      showRecord(json.data);
+    } catch {
+      // mock
+      showRecord({ record_id: 99, spot_id: 42, entry_time: '2026-05-17 10:00:00' });
+      setMsg('(서버 미연결 — mock 데이터)');
+    }
+  }
+
+  function showRecord(data) {
+    recordId = data.record_id;
+    document.getElementById('record-info').textContent =
+      `자리 #${data.spot_id} · 입차 ${data.entry_time}`;
+    document.getElementById('record-row').style.display = '';
+    document.getElementById('btn-exit').disabled        = false;
+    setMsg('');
+  }
+
+  function clearRecord() {
+    recordId = null;
+    document.getElementById('record-row').style.display = 'none';
+    document.getElementById('btn-exit').disabled        = true;
+  }
+
+  async function submitExit() {
+    if (!recordId) { setMsg('먼저 번호판을 조회하세요.'); return; }
+    const method = document.getElementById('method').value;
+    if (!method) { setMsg('결제 수단을 선택하세요.'); return; }
+
+    setMsg('처리 중...');
+    try {
+      const res  = await fetch(`${API}/park/exit`, {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ record_id: recordId, method }),
+      });
+      const json = await res.json();
+      if (!json.ok) { setMsg(json.error || '출차 처리 오류'); return; }
+      showResult(json.data);
+    } catch {
+      // mock
+      showResult({
+        entry_time     : '2026-05-17 10:00:00',
+        exit_time      : '2026-05-17 12:30:00',
+        parking_minutes: 150,
+        raw_fee        : 15000,
+        discount_rate  : 0.00,
+        discount_reason: 'none',
+        final_fee      : 15000,
+      });
+      setMsg('(서버 미연결 — mock 데이터)');
+    }
+  }
+
+  function showResult(d) {
+    const plate = document.getElementById('plate').value.trim();
+    const h     = Math.floor(d.parking_minutes / 60);
+    const m     = d.parking_minutes % 60;
+    const timeStr = h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+
+    document.getElementById('r-plate').textContent    = plate;
+    document.getElementById('r-entry').textContent    = d.entry_time;
+    document.getElementById('r-exit').textContent     = d.exit_time;
+    document.getElementById('r-minutes').textContent  = timeStr;
+    document.getElementById('r-raw').textContent      = `${d.raw_fee.toLocaleString()}원`;
+    document.getElementById('r-reason').textContent   = reasonKo[d.discount_reason] ?? d.discount_reason;
+    document.getElementById('r-discount').textContent = `${Math.round(d.discount_rate * 100)}%`;
+    document.getElementById('r-final').textContent    = `${d.final_fee.toLocaleString()}원`;
+
+    document.getElementById('result').style.display = '';
+    document.getElementById('btn-exit').disabled    = true;
+    if (!document.getElementById('msg').textContent.includes('mock')) setMsg('');
+  }
+
+  function setMsg(txt) {
+    document.getElementById('msg').textContent = txt;
+  }
+
+  function resetAll() {
+    document.getElementById('plate').value          = '';
+    document.getElementById('method').value         = '';
+    document.getElementById('result').style.display = 'none';
+    clearRecord();
+    setMsg('');
+  }
+</script>
+</body>
+</html>
