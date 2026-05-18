@@ -375,7 +375,11 @@
 
   // ── 층 버튼 (백화점) ──────────────────────────
   function buildFloorButtons() {
-    const floors = [...new Set(state.spots.map(s => s.floor))].sort((a, b) => a - b);
+    const floors = [];
+    state.spots.forEach(s => {
+      if (!floors.includes(s.floor)) floors.push(s.floor);
+    });
+    floors.sort((a, b) => a - b);
     const fb = document.getElementById('floor-btns');
     fb.innerHTML = '';
     if (state.lotId !== 1) return;
@@ -472,7 +476,11 @@
 
     const typeIcon = { disabled:'♿', ev:'⚡' };
     const typeKo   = { general:'일반', disabled:'장애인', ev:'전기차' };
-    const floors   = [...new Set(state.spots.map(s => s.floor))].sort((a, b) => a - b);
+    const floors = [];
+    state.spots.forEach(s => {
+      if (!floors.includes(s.floor)) floors.push(s.floor);
+    });
+    floors.sort((a, b) => a - b);
 
     const bg = document.createElement('div');
     bg.id = 'lot-bg';
@@ -492,7 +500,11 @@
       bg.appendChild(fHeader);
 
       const floorSpots = state.spots.filter(s => s.floor === f);
-      const zones      = [...new Set(floorSpots.map(s => s.zone))].sort();
+      const zones = [];
+      floorSpots.forEach(s => {
+        if (!zones.includes(s.zone)) zones.push(s.zone);
+      });
+      zones.sort();
 
       for (let start = 0; start < zones.length; start += ZONES_PER_ROW) {
         if (start > 0) {
@@ -705,9 +717,9 @@
       );
     } else {
       ['P','Q','R','S','T','U','V','W','X','Y'].forEach(z => {
-        push(1, z, 'general',  84);
-        push(1, z, 'disabled',  8);
-        push(1, z, 'ev',         8);
+        push(-1, z, 'general',  84);
+        push(-1, z, 'disabled',  8);
+        push(-1, z, 'ev',         8);
       });
     }
 
