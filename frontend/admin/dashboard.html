@@ -328,7 +328,11 @@
   // ── 바 차트 (테이블 방식) ─────────────────────
   function renderBarTable(data, labelKey, valKey, unit) {
     if (!data || !data.length) return '데이터 없음';
-    const max = Math.max(...data.map(r => r[valKey] ?? 0)) || 1;
+    let max = 0;
+    data.forEach(r => {
+      if ((r[valKey] ?? 0) > max) max = r[valKey] ?? 0;
+    });
+    if (max === 0) max = 1;
     const rows = data.map(r => {
       const val   = r[valKey] ?? 0;
       const width = Math.round((val / max) * 200);
