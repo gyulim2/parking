@@ -3,29 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <title>이경규의 파킹랏</title>
+  <link rel="stylesheet" href="style.css">
   <style>
-    body {
-      font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
-      margin: 80px auto;
-      width: 400px;
-      text-align: center;
-    }
-
+    body { margin: 80px auto; width: 400px; text-align: center; }
     h1 { font-size: 1.8rem; margin-bottom: 8px; }
     p  { color: #555; margin-bottom: 40px; }
-
     .btn-group { display: flex; gap: 16px; justify-content: center; }
-
-    button {
-      width: 140px;
-      padding: 14px 0;
-      font-size: 1rem;
-      font-family: inherit;
-      cursor: pointer;
-    }
-
+    button { width: 140px; padding: 14px 0; font-size: 1rem; }
     hr { margin: 40px 0 16px; }
-    .footer { font-size: 0.8rem; color: #aaa; }
   </style>
 </head>
 <body>
@@ -36,18 +21,9 @@
 
 <div class="btn-group">
   <button onclick="location.href='user/enter.html'">사용자</button>
-  <button onclick="goOwner()">오너</button>
+  <button onclick="location.href='admin/login.html'">오너</button>
 </div>
 
 <hr>
-
-<script>
-  function goOwner() {
-    const code = prompt("오너 인증번호를 입력하세요.");
-    if (code === "1234") location.href = "admin/dashboard.html";
-    else if (code !== null) alert("인증번호가 올바르지 않습니다.");
-  }
-</script>
-
 </body>
 </html>

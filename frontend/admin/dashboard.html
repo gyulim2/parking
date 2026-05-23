@@ -3,102 +3,81 @@
 <head>
   <meta charset="UTF-8" />
   <title>Owner 대시보드</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    .section-title { font-weight: bold; margin-bottom: 10px; }
+    .row { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 4px; }
+    .filter-bar { margin-bottom: 4px; }
+    .filter-bar label { margin-right: 8px; }
+  </style>
 </head>
 <body>
+<div id="wrap">
 
-<h2>이경규의 파킹랏 - Owner 대시보드</h2>
+<h2>이경규의 파킹랏 · Owner 대시보드</h2>
 <hr>
 
-주차장 필터:
-<input type="radio" name="lot" id="lot-all" value=""  checked onchange="onLotChange()" /><label for="lot-all">전체</label>
-<input type="radio" name="lot" id="lot-1"   value="1" onchange="onLotChange()" /><label for="lot-1">A 백화점</label>
-<input type="radio" name="lot" id="lot-2"   value="2" onchange="onLotChange()" /><label for="lot-2">B 아파트</label>
-&nbsp;&nbsp;&nbsp;
-<input type="button" value="로그아웃" onclick="logout()" />
+<div class="filter-bar">
+  주차장 필터:
+  <label><input type="radio" name="lot" id="lot-all" value=""  checked onchange="onLotChange()"> 전체</label>
+  <label><input type="radio" name="lot" id="lot-1"   value="1" onchange="onLotChange()"> A 백화점</label>
+  <label><input type="radio" name="lot" id="lot-2"   value="2" onchange="onLotChange()"> B 아파트</label>
+  &nbsp;&nbsp;
+  <input type="button" value="로그아웃" onclick="logout()" />
+</div>
 
 <hr>
 
 <!-- 오늘 수익 + 비교 -->
-<table border="0" cellpadding="0" cellspacing="20">
-<tr valign="top">
-  <td>
-    <b>[ 오늘 수익 ]</b><br><br>
-    <table border="1" cellpadding="6" cellspacing="0">
-      <tr>
-        <td>대상</td>
-        <td id="today-lbl">전체</td>
-      </tr>
-      <tr>
-        <td>합계</td>
-        <td id="today-total">-</td>
-      </tr>
+<div class="row">
+  <div>
+    <div class="section-title">[ 오늘 수익 ]</div>
+    <table>
+      <tr><td>대상</td><td id="today-lbl">전체</td></tr>
+      <tr><td>합계</td><td id="today-total">-</td></tr>
     </table>
-  </td>
-  <td>
-    <b>[ 주차장 비교 (전체 기간) ]</b><br><br>
-    <table border="1" cellpadding="6" cellspacing="0" id="compare-table">
+  </div>
+  <div>
+    <div class="section-title">[ 주차장 비교 (전체 기간) ]</div>
+    <table id="compare-table">
       <tr><th>주차장</th><th>수익 합계</th></tr>
       <tr><td colspan="2">로딩 중...</td></tr>
     </table>
-  </td>
-</tr>
-</table>
+  </div>
+</div>
 
 <hr>
 
-<!-- 주간 + 월간 -->
-<table border="0" cellpadding="0" cellspacing="20">
-<tr valign="top">
-  <td>
-    <b>[ 주간 수익 (요일별) ]</b><br><br>
+<!-- 주간 + 월간 + 혼잡도 -->
+<div class="row">
+  <div>
+    <div class="section-title">[ 주간 수익 (요일별) ]</div>
     <div id="week-chart">로딩 중...</div>
-  </td>
-  <td>
-    <b>[ 월간 수익 (주별) ]</b><br><br>
+  </div>
+  <div>
+    <div class="section-title">[ 월간 수익 (주별) ]</div>
     <div id="month-chart">로딩 중...</div>
-  </td>
-</tr>
-</table>
-
-<hr>
-
-<!-- 혼잡도 -->
-<b>[ 시간대별 혼잡도 ]</b>
-<span id="congestion-lbl" style="color:gray;"></span>
-<br><br>
-<div id="congestion-chart">로딩 중...</div>
-
-<hr>
-
-<!-- 할인 사유별 -->
-<b>[ 할인 사유별 통계 ]</b><br><br>
-<table border="1" cellpadding="6" cellspacing="0">
-  <thead>
-    <tr>
-      <th>할인 사유</th>
-      <th>건수</th>
-      <th>절감 금액 / 수납 금액</th>
-    </tr>
-  </thead>
-  <tbody id="reason-body">
-    <tr><td colspan="3">로딩 중...</td></tr>
-  </tbody>
-</table>
+  </div>
+  <div>
+    <div class="section-title">[ 시간대별 혼잡도 ] <span id="congestion-lbl" style="color:#888; font-weight:normal;"></span></div>
+    <div id="congestion-chart">로딩 중...</div>
+  </div>
+</div>
 
 <hr>
 
 <!-- 정산 이력 -->
-<b>[ 정산 이력 ]</b><br><br>
+<div class="section-title">[ 정산 이력 ]</div>
 
 날짜:
 <input type="date" id="pay-date" />
 <input type="button" value="조회" onclick="loadPayments()" />
 <input type="button" value="초기화" onclick="clearPayFilter()" />
-<span id="pay-count" style="color:gray;"></span>
+<span id="pay-count" style="color:#888; margin-left:6px;"></span>
 
 <br><br>
 
-<table border="1" cellpadding="6" cellspacing="0">
+<table>
   <thead>
     <tr>
       <th>#</th>
@@ -117,60 +96,52 @@
   </tbody>
 </table>
 
-<br><br>
+<br>
 
 <hr>
 
-<!-- 입차 이력 -->
-<b>[ 입차 이력 ]</b><br><br>
+<!-- 입차 + 출차 이력 -->
+<div class="row" style="align-items:flex-start">
+  <div style="flex:1; min-width:0; overflow-x:auto">
+    <div class="section-title">[ 입차 이력 ] <span id="entry-count" style="color:#888; font-weight:normal;"></span></div>
+    <table style="width:100%">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>번호판</th>
+          <th>주차장</th>
+          <th>자리</th>
+          <th>이용자 유형</th>
+          <th>입차 시각</th>
+          <th>상태</th>
+        </tr>
+      </thead>
+      <tbody id="entry-body">
+        <tr><td colspan="7">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="flex:1; min-width:0; overflow-x:auto">
+    <div class="section-title">[ 출차 이력 ] <span id="exit-count" style="color:#888; font-weight:normal;"></span></div>
+    <table style="width:100%">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>번호판</th>
+          <th>주차장</th>
+          <th>입차 시각</th>
+          <th>출차 시각</th>
+          <th>주차 시간</th>
+        </tr>
+      </thead>
+      <tbody id="exit-body">
+        <tr><td colspan="6">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
-<span id="entry-count" style="color:gray;"></span>
-<br><br>
-
-<table border="1" cellpadding="6" cellspacing="0">
-  <thead>
-    <tr>
-      <th>#</th>
-      <th>번호판</th>
-      <th>주차장</th>
-      <th>자리</th>
-      <th>이용자 유형</th>
-      <th>입차 시각</th>
-      <th>상태</th>
-    </tr>
-  </thead>
-  <tbody id="entry-body">
-    <tr><td colspan="7">로딩 중...</td></tr>
-  </tbody>
-</table>
-
-<br><br>
-
-<hr>
-
-<!-- 출차 이력 -->
-<b>[ 출차 이력 ]</b><br><br>
-
-<span id="exit-count" style="color:gray;"></span>
-<br><br>
-
-<table border="1" cellpadding="6" cellspacing="0">
-  <thead>
-    <tr>
-      <th>#</th>
-      <th>번호판</th>
-      <th>주차장</th>
-      <th>입차 시각</th>
-      <th>출차 시각</th>
-      <th>주차 시간</th>
-    </tr>
-  </thead>
-  <tbody id="exit-body">
-    <tr><td colspan="6">로딩 중...</td></tr>
-  </tbody>
-</table>
-
-<br><br>
+<br>
 
 <script>
   const API = '/api';
@@ -215,7 +186,6 @@
     loadWeek(q);
     loadMonth(q);
     loadCongestion();
-    loadByReason(q);
     loadPayments();
     loadEntries();
     loadExits();
@@ -251,7 +221,7 @@
       tbl.innerHTML = `<tr><th>주차장</th><th>수익 합계</th></tr>
         <tr><td>A 백화점</td><td>250,000원</td></tr>
         <tr><td>B 아파트</td><td>183,000원</td></tr>
-        <tr><td colspan="2" style="color:gray;">(mock)</td></tr>`;
+        <tr><td colspan="2" style="color:#888;">(mock)</td></tr>`;
     }
   }
 
@@ -269,7 +239,7 @@
         { weekday:'수', total:18000 }, { weekday:'목', total:41000 },
         { weekday:'금', total:55000 }, { weekday:'토', total:67000 },
         { weekday:'일', total:48000 },
-      ], 'weekday', 'total', '원') + '<br><span style="color:gray;">(mock)</span>';
+      ], 'weekday', 'total', '원') + '<br><span style="color:#888;">(mock)</span>';
     }
   }
 
@@ -286,7 +256,7 @@
       el.innerHTML = renderBarTable([
         { label:'1주차', total:120000 }, { label:'2주차', total:180000 },
         { label:'3주차', total:155000 }, { label:'4주차', total: 98000 },
-      ], 'label', 'total', '원') + '<br><span style="color:gray;">(mock)</span>';
+      ], 'label', 'total', '원') + '<br><span style="color:#888;">(mock)</span>';
     }
   }
 
@@ -295,7 +265,7 @@
     const el   = document.getElementById('congestion-chart');
     const lbl  = document.getElementById('congestion-lbl');
     const cLot = lotId || '1';
-    lbl.textContent = ` (${cLot === '1' ? 'A 백화점' : 'B 아파트'} 기준)`;
+    lbl.textContent = `(${cLot === '1' ? 'A 백화점' : 'B 아파트'} 기준)`;
     try {
       const res  = await fetch(`${API}/stats/congestion?lot_id=${cLot}`);
       const json = await res.json();
@@ -304,7 +274,7 @@
       el.innerHTML = renderBarTable(data, 'label', 'entry_count', '건');
     } catch {
       el.innerHTML = renderBarTable(MOCK_CONGESTION, 'label', 'entry_count', '건')
-        + '<br><span style="color:gray;">(mock)</span>';
+        + '<br><span style="color:#888;">(mock)</span>';
     }
   }
 
@@ -323,7 +293,7 @@
         { reason:'disabled',      count:1, total:3000 },
         { reason:'none',          count:1, total:15000 },
       ].map(reasonRow).join('')
-        + `<tr><td colspan="3" style="color:gray;">(mock)</td></tr>`;
+        + `<tr><td colspan="3" style="color:#888;">(mock)</td></tr>`;
     }
   }
 
@@ -366,10 +336,10 @@
         <td><b>${r.plate_number}</b></td>
         <td>${r.entry_time}</td>
         <td>${r.exit_time}</td>
-        <td align="right">${(r.raw_fee ?? 0).toLocaleString()}원</td>
+        <td style="text-align:right">${(r.raw_fee ?? 0).toLocaleString()}원</td>
         <td>${REASON_KO[r.discount_reason] ?? r.discount_reason}</td>
-        <td align="right">${discPct}%</td>
-        <td align="right"><b>${(r.final_fee ?? 0).toLocaleString()}원</b></td>
+        <td style="text-align:right">${discPct}%</td>
+        <td style="text-align:right"><b>${(r.final_fee ?? 0).toLocaleString()}원</b></td>
         <td>${METHOD_KO[r.method] ?? r.method}</td>
       </tr>`;
     }).join('');
@@ -442,30 +412,26 @@
     }
   }
 
-  // ── 바 차트 (테이블 방식) ─────────────────────
+  // ── 바 차트 ───────────────────────────────────
   function renderBarTable(data, labelKey, valKey, unit) {
     if (!data || !data.length) return '데이터 없음';
     let max = 0;
-    data.forEach(r => {
-      if ((r[valKey] ?? 0) > max) max = r[valKey] ?? 0;
-    });
+    data.forEach(r => { if ((r[valKey] ?? 0) > max) max = r[valKey] ?? 0; });
     if (max === 0) max = 1;
     const rows = data.map(r => {
       const val   = r[valKey] ?? 0;
-      const width = Math.round((val / max) * 200);
+      const width = Math.round((val / max) * 160);
       const disp  = unit === '원' ? `${val.toLocaleString()}원` : `${val}${unit}`;
       return `<tr>
-        <td>${r[labelKey]}</td>
-        <td><table border="0" cellpadding="0" cellspacing="0"><tr>
-          <td bgcolor="#000080" width="${width}" height="14">&nbsp;</td>
-        </tr></table></td>
-        <td>&nbsp;${disp}</td>
+        <td style="border:none;padding:2px 6px;width:48px">${r[labelKey]}</td>
+        <td style="border:none;padding:2px 6px;width:176px"><span class="bar" style="width:${width}px"></span></td>
+        <td style="border:none;padding:2px 6px">${disp}</td>
       </tr>`;
     }).join('');
-    return `<table border="0" cellpadding="3" cellspacing="0">${rows}</table>`;
+    return `<table style="border:none;border-collapse:collapse">${rows}</table>`;
   }
 
-  // ── 로그아웃 ─────────────────────────────────
+  // ── 로그아웃 ──────────────────────────────────
   async function logout() {
     try { await fetch(`${API}/admin/logout`, { method: 'POST' }); } catch {}
     location.href = 'login.html';
@@ -496,5 +462,6 @@
     { payment_id:3, plate_number:'34나5678', entry_time:'2026-05-10 10:00:00', exit_time:'2026-05-10 14:00:00', raw_fee:24000, discount_rate:1.00, discount_reason:'season_pass',   final_fee:0,     method:'season_pass'   },
   ];
 </script>
+</div>
 </body>
 </html>
