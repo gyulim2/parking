@@ -1,0 +1,79 @@
+from __future__ import annotations
+from config import get_connection
+
+
+def find_by_plate(plate_number: str) -> dict | None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT ar.resident_id, ar.plate_number, ar.unit_id, au.unit_number, au.lot_id "
+                "FROM AptResident ar "
+                "JOIN AptUnit au ON au.unit_id = ar.unit_id "
+                "WHERE ar.plate_number = %s",
+                (plate_number,),
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+    return row
+
+
+def find_employee_by_plate(plate_number: str) -> dict | None:
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT employee_id, plate_number, lot_id "
+                "FROM DeptEmployee "
+                "WHERE plate_number = %s",
+                (plate_number,),
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+    return row
+
+
+def find_vehicle_info(plate_number: str) -> dict | None:
+    """GET /api/vehicle 용: 차량 존재 여부 + user_type + 속성 반환"""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT plate_number, is_disabled, is_ev FROM Vehicle WHERE plate_number = %s",
+                (plate_number,),
+            )
+            vehicle = cur.fetchone()
+            if vehicle is None:
+                return None
+
+            cur.execute("SELECT 1 FROM DeptEmployee WHERE plate_number = %s", (plate_number,))
+            if cur.fetchone():
+                user_type = "employee"
+            else:
+                cur.execute("SELECT 1 FROM AptResident WHERE plate_number = %s", (plate_number,))
+                user_type = "resident" if cur.fetchone() else "general"
+    finally:
+        conn.close()
+
+    return {
+        "plate_number": vehicle["plate_number"],
+        "user_type":    user_type,
+        "is_disabled":  bool(vehicle["is_disabled"]),
+        "is_ev":        bool(vehicle["is_ev"]),
+    }
+
+
+def find_units_by_lot(lot_id: int) -> list[dict]:
+    """GET /api/units 용: 아파트 호수 목록"""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT unit_id, unit_number FROM AptUnit WHERE lot_id = %s ORDER BY unit_number",
+                (lot_id,),
+            )
+            return cur.fetchall()
+    finally:
+        conn.close()
