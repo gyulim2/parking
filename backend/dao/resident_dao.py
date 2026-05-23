@@ -36,7 +36,6 @@ def find_employee_by_plate(plate_number: str) -> dict | None:
 
 
 def find_vehicle_info(plate_number: str) -> dict | None:
-    """GET /api/vehicle 용: 차량 존재 여부 + user_type + 속성 반환"""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -66,7 +65,6 @@ def find_vehicle_info(plate_number: str) -> dict | None:
 
 
 def find_units_by_lot(lot_id: int) -> list[dict]:
-    """GET /api/units 용: 아파트 호수 목록"""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
