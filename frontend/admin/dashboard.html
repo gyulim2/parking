@@ -119,6 +119,59 @@
 
 <br><br>
 
+<hr>
+
+<!-- 입차 이력 -->
+<b>[ 입차 이력 ]</b><br><br>
+
+<span id="entry-count" style="color:gray;"></span>
+<br><br>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>번호판</th>
+      <th>주차장</th>
+      <th>자리</th>
+      <th>이용자 유형</th>
+      <th>입차 시각</th>
+      <th>상태</th>
+    </tr>
+  </thead>
+  <tbody id="entry-body">
+    <tr><td colspan="7">로딩 중...</td></tr>
+  </tbody>
+</table>
+
+<br><br>
+
+<hr>
+
+<!-- 출차 이력 -->
+<b>[ 출차 이력 ]</b><br><br>
+
+<span id="exit-count" style="color:gray;"></span>
+<br><br>
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>번호판</th>
+      <th>주차장</th>
+      <th>입차 시각</th>
+      <th>출차 시각</th>
+      <th>주차 시간</th>
+    </tr>
+  </thead>
+  <tbody id="exit-body">
+    <tr><td colspan="6">로딩 중...</td></tr>
+  </tbody>
+</table>
+
+<br><br>
+
 <script>
   const API = '/api';
 
@@ -164,6 +217,8 @@
     loadCongestion();
     loadByReason(q);
     loadPayments();
+    loadEntries();
+    loadExits();
   }
 
   // ── 오늘 수익 ─────────────────────────────────
@@ -323,6 +378,68 @@
   function clearPayFilter() {
     document.getElementById('pay-date').value = '';
     loadPayments();
+  }
+
+  // ── 입차 이력 ─────────────────────────────────
+  const USER_TYPE_KO = { employee:'직원', resident:'입주민', visitor:'방문객', general:'일반' };
+
+  async function loadEntries() {
+    const tbody = document.getElementById('entry-body');
+    const count = document.getElementById('entry-count');
+    const qs = lotId ? `?lot_id=${lotId}` : '';
+    try {
+      const res  = await fetch(`${API}/records${qs}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      const data = json.data;
+      count.textContent = `총 ${data.length}건`;
+      if (!data.length) { tbody.innerHTML = '<tr><td colspan="7">입차 이력이 없습니다.</td></tr>'; return; }
+      tbody.innerHTML = data.map(r => `<tr>
+        <td>${r.record_id}</td>
+        <td><b>${r.plate_number}</b></td>
+        <td>${r.lot_name}</td>
+        <td>#${r.spot_id}</td>
+        <td>${USER_TYPE_KO[r.user_type] ?? r.user_type}</td>
+        <td>${r.entry_time}</td>
+        <td>${r.exit_time ? '출차완료' : '<b style="color:#2563eb">주차중</b>'}</td>
+      </tr>`).join('');
+    } catch {
+      count.textContent = '(서버 미연결)';
+      tbody.innerHTML = '<tr><td colspan="7">데이터를 불러올 수 없습니다.</td></tr>';
+    }
+  }
+
+  // ── 출차 이력 ─────────────────────────────────
+  async function loadExits() {
+    const tbody = document.getElementById('exit-body');
+    const count = document.getElementById('exit-count');
+    const params = ['status=exited'];
+    if (lotId) params.push(`lot_id=${lotId}`);
+    try {
+      const res  = await fetch(`${API}/records?${params.join('&')}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      const data = json.data;
+      count.textContent = `총 ${data.length}건`;
+      if (!data.length) { tbody.innerHTML = '<tr><td colspan="6">출차 이력이 없습니다.</td></tr>'; return; }
+      tbody.innerHTML = data.map(r => {
+        const mins = r.parking_minutes ?? 0;
+        const duration = mins >= 60
+          ? `${Math.floor(mins/60)}시간 ${mins%60}분`
+          : `${mins}분`;
+        return `<tr>
+          <td>${r.record_id}</td>
+          <td><b>${r.plate_number}</b></td>
+          <td>${r.lot_name}</td>
+          <td>${r.entry_time}</td>
+          <td>${r.exit_time}</td>
+          <td>${duration}</td>
+        </tr>`;
+      }).join('');
+    } catch {
+      count.textContent = '(서버 미연결)';
+      tbody.innerHTML = '<tr><td colspan="6">데이터를 불러올 수 없습니다.</td></tr>';
+    }
   }
 
   // ── 바 차트 (테이블 방식) ─────────────────────
