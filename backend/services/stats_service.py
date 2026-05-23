@@ -5,7 +5,6 @@ _DOW = {1: "일", 2: "월", 3: "화", 4: "수", 5: "목", 6: "금", 7: "토"}
 
 
 def _lot_condition(lot_id):
-    """lot_id 필터 조건/파라미터 튜플 반환"""
     if lot_id is not None:
         return "AND ps.lot_id = %s", (lot_id,)
     return "", ()
@@ -142,9 +141,6 @@ def get_revenue_by_reason(lot_id=None) -> list[dict]:
 
 
 def get_records(lot_id=None, status=None) -> list[dict]:
-    """입차/출차 이력 조회
-    status: 'active'(주차중) | 'exited'(출차완료) | None(전체)
-    """
     conditions = ["1=1"]
     params = []
     if lot_id is not None:

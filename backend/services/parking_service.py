@@ -7,7 +7,6 @@ from dao import parking_record_dao, parking_spot_dao, payment_dao, season_pass_d
 # ── 차량 등록 (upsert) ────────────────────────────────────────────────────────
 
 def upsert_vehicle(plate_number: str, is_disabled: bool, is_ev: bool) -> None:
-    """미등록 차량이면 INSERT, 등록 차량이면 DB 값 그대로 유지 (자가신고 위조 방지)"""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -38,7 +37,6 @@ def enter(req: ParkEnterRequest) -> None:
 # ── 출차 / 정산 ───────────────────────────────────────────────────────────────
 
 def exit_and_pay(req: ParkExitRequest) -> dict:
-    """출차 + 정산. 명세서 7-4 에 따라 시간 정보까지 포함한 dict 반환."""
     record = parking_record_dao.find_by_id(req.record_id)
     if record is None:
         raise ValueError(f"주차 기록을 찾을 수 없습니다. (record_id={req.record_id})")

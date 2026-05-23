@@ -37,7 +37,7 @@ def get_vehicle():
     if not plate:
         return err("plate는 필수입니다.")
     info = resident_dao.find_vehicle_info(plate)
-    return ok(info)  # 미등록이면 data: null
+    return ok(info)
 
 
 # ── GET /api/units?lot_id=2 ───────────────────────────────────────────────────
