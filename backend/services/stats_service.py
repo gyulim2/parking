@@ -19,7 +19,7 @@ def get_revenue_today(lot_id=None) -> dict:
         JOIN ParkingSpot   ps ON ps.spot_id   = pr.spot_id
         WHERE DATE(pr.exit_time) = CURDATE() {cond}
     """
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
@@ -40,7 +40,7 @@ def get_revenue_week(lot_id=None) -> list[dict]:
         WHERE YEARWEEK(pr.exit_time, 1) = YEARWEEK(CURDATE(), 1) {cond}
         GROUP BY dow ORDER BY dow
     """
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
@@ -61,7 +61,7 @@ def get_revenue_month(lot_id=None) -> list[dict]:
         WHERE DATE_FORMAT(pr.exit_time, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m') {cond}
         GROUP BY week ORDER BY week
     """
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
@@ -81,7 +81,7 @@ def get_revenue_compare() -> list[dict]:
         JOIN ParkingLot    pl ON pl.lot_id    = ps.lot_id
         GROUP BY ps.lot_id, pl.name ORDER BY ps.lot_id
     """
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(sql)
@@ -99,7 +99,7 @@ def get_congestion(lot_id: int) -> list[dict]:
         WHERE lot_id = %s
         GROUP BY entry_hour ORDER BY entry_hour
     """
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(sql, (lot_id,))
@@ -122,7 +122,7 @@ def get_revenue_by_reason(lot_id=None) -> list[dict]:
         WHERE 1=1 {cond}
         GROUP BY p.discount_reason
     """
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
@@ -163,7 +163,7 @@ def get_records(lot_id=None, status=None) -> list[dict]:
         ORDER BY pr.record_id DESC
         LIMIT 200
     """
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
@@ -199,7 +199,7 @@ def get_payments(lot_id=None, date=None) -> list[dict]:
         WHERE {" AND ".join(conditions)}
         ORDER BY p.payment_id DESC
     """
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)

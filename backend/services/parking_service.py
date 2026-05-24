@@ -7,7 +7,7 @@ from dao import parking_record_dao, parking_spot_dao, payment_dao, season_pass_d
 # ── 차량 등록 (upsert) ────────────────────────────────────────────────────────
 
 def upsert_vehicle(plate_number: str, is_disabled: bool, is_ev: bool) -> None:
-    conn = get_connection()
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(

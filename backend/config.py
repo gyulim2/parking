@@ -5,11 +5,22 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def get_connection():
+def get_connection(role: str = "user"):
+    """
+    role='admin' → parking_admin 계정 (전체 권한)
+    role='user'  → parking_user  계정 (SELECT + EXECUTE)
+    """
+    if role == "admin":
+        user     = os.getenv("DB_ADMIN_USER", "parking_admin")
+        password = os.getenv("DB_ADMIN_PASSWORD", "")
+    else:
+        user     = os.getenv("DB_USER", "parking_user")
+        password = os.getenv("DB_PASSWORD", "")
+
     unix_socket = os.getenv("DB_SOCKET", "")
     kwargs = dict(
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASSWORD", ""),
+        user=user,
+        password=password,
         database=os.getenv("DB_NAME", "parking_db"),
         charset="utf8mb4",
         cursorclass=pymysql.cursors.DictCursor,
