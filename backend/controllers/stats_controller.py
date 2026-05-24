@@ -1,7 +1,7 @@
-import os
 from flask import Blueprint, request, jsonify, session
 
 from auth import admin_required
+from dao import user_dao
 from services import stats_service
 
 bp = Blueprint("admin", __name__, url_prefix="/api")
@@ -20,16 +20,20 @@ def err(msg, status=400):
 @bp.route("/admin/login", methods=["POST"])
 def login():
     data     = request.get_json(silent=True) or {}
-    username = data.get("username", "")
+    username = data.get("username", "").strip()
     password = data.get("password", "")
 
-    if (username == os.getenv("ADMIN_USERNAME", "admin") and
-            password == os.getenv("ADMIN_PASSWORD", "admin1234")):
-        session["admin_id"] = 1
-        session["username"] = username
-        return ok({"admin_id": 1, "username": username})
+    if not username or not password:
+        return err("아이디와 비밀번호를 입력해주세요.", 400)
 
-    return err("아이디 또는 비밀번호가 일치하지 않습니다.", 401)
+    user = user_dao.find_by_credentials(username, password)
+    if user is None:
+        return err("아이디 또는 비밀번호가 일치하지 않습니다.", 401)
+
+    session["admin_id"] = user["user_id"]
+    session["username"] = user["user_id"]
+    session["role"]     = user["role"]
+    return ok({"user_id": user["user_id"], "role": user["role"]})
 
 
 @bp.route("/admin/logout", methods=["POST"])

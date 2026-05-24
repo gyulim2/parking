@@ -1,0 +1,29 @@
+-- ============================================================
+-- MySQL DB 계정 설정 (root로 실행)
+-- 실행 순서: 이 파일을 먼저 실행한 뒤 01_schema.sql ~ 실행
+-- ============================================================
+
+-- 기존 계정 정리 (재실행 시 오류 방지)
+DROP USER IF EXISTS 'parking_admin'@'localhost';
+DROP USER IF EXISTS 'parking_user'@'localhost';
+
+-- 관리자 계정: 모든 권한 (통계 조회, 데이터 수정 등)
+CREATE USER 'parking_admin'@'localhost' IDENTIFIED BY 'admin_pw_여기수정';
+GRANT ALL PRIVILEGES ON parking_db.* TO 'parking_admin'@'localhost';
+
+-- 일반 계정: SELECT만 가능 (입차/출차 등 프로시저 실행은 EXECUTE 권한 추가)
+CREATE USER 'parking_user'@'localhost' IDENTIFIED BY 'user_pw_여기수정';
+GRANT SELECT ON parking_db.* TO 'parking_user'@'localhost';
+GRANT EXECUTE ON parking_db.* TO 'parking_user'@'localhost';
+
+FLUSH PRIVILEGES;
+
+-- ── 기본 관리자 계정 삽입 ────────────────────────────────────
+-- schema 실행 후 이 INSERT를 실행하거나 06_dummy_data.sql 뒤에 실행
+-- 비밀번호 'admin1234' → SHA2-256 해시로 저장
+-- 실제 배포 전 반드시 비밀번호 변경할 것
+
+USE parking_db;
+
+INSERT INTO AppUser (user_id, pwd_hash, role)
+VALUES ('admin', SHA2('admin1234', 256), 'admin');

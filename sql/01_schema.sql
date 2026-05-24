@@ -168,6 +168,18 @@ CREATE TABLE ParkingRecord (
   COLLATE = utf8mb4_unicode_ci;
 
 
+-- 앱 로그인 사용자 (관리자 / 스태프)
+-- pwd_hash: SHA2(평문비밀번호, 256) → VARCHAR(64)
+CREATE TABLE AppUser (
+    user_id  VARCHAR(50)              NOT NULL,
+    pwd_hash VARCHAR(64)              NOT NULL COMMENT 'SHA2-256 해시값',
+    role     ENUM('admin', 'staff')   NOT NULL DEFAULT 'staff',
+    CONSTRAINT pk_app_user PRIMARY KEY (user_id)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci;
+
+
 -- final_fee = CEIL(raw_fee * (1 - discount_rate))
 CREATE TABLE Payment (
     payment_id      INT          NOT NULL AUTO_INCREMENT,
