@@ -1,5 +1,8 @@
 USE parking_db;
 
+DROP PROCEDURE IF EXISTS sp_park_enter;
+DROP PROCEDURE IF EXISTS sp_park_exit;
+
 DELIMITER $$
 
 -- 입차 처리
@@ -91,9 +94,8 @@ BEGIN
        SET exit_time = v_exit_time
      WHERE record_id = p_record_id;
 
-    -- 요금 계산 (30분당 3000원, 올림)
-    SET v_minutes = TIMESTAMPDIFF(MINUTE, v_entry_time, v_exit_time);
-    SET v_units   = CEIL(v_minutes / 30.0);
+    -- 요금 계산 (30분당 3000원, 초 단위로 올림, 최소 1단위)
+    SET v_units   = GREATEST(CEIL(TIMESTAMPDIFF(SECOND, v_entry_time, v_exit_time) / 1800.0), 1);
     SET v_raw_fee = v_units * 3000;
 
     -- 할인 사유 결정 (우선순위: season_pass > resident_free > disabled > none)

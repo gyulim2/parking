@@ -385,3 +385,7 @@ VALUES
     (6, 6, 30000, 1.00, 'resident_free', 0, 'resident_free'),
     (7, 7, 15000, 0.00, 'none',      15000, 'card'),
     (8, 8,  6000, 0.50, 'disabled',   3000, 'card');
+
+-- 관리자 계정 (비밀번호: admin1234)
+INSERT INTO AppUser (user_id, pwd_hash, role)
+VALUES ('admin', SHA2('admin1234', 256), 'admin');
