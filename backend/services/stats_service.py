@@ -53,12 +53,12 @@ def get_revenue_week(lot_id=None) -> list[dict]:
 def get_revenue_month(lot_id=None) -> list[dict]:
     cond, params = _lot_condition(lot_id)
     sql = f"""
-        SELECT WEEK(pr.exit_time) - WEEK(DATE_FORMAT(pr.exit_time, '%Y-%m-01')) + 1 AS week,
+        SELECT WEEK(pr.exit_time) - WEEK(DATE_FORMAT(pr.exit_time, '%%Y-%%m-01')) + 1 AS week,
                COALESCE(SUM(p.final_fee), 0) AS total
         FROM Payment p
         JOIN ParkingRecord pr ON pr.record_id = p.record_id
         JOIN ParkingSpot   ps ON ps.spot_id   = pr.spot_id
-        WHERE DATE_FORMAT(pr.exit_time, '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m') {cond}
+        WHERE DATE_FORMAT(pr.exit_time, '%%Y-%%m') = DATE_FORMAT(CURDATE(), '%%Y-%%m') {cond}
         GROUP BY week ORDER BY week
     """
     conn = get_connection(role="admin")

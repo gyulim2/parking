@@ -125,5 +125,6 @@ def get_active():
     return ok({
         "record_id":  record.record_id,
         "spot_id":    record.spot_id,
+        "user_type":  record.user_type,
         "entry_time": record.entry_time.strftime("%Y-%m-%d %H:%M:%S"),
     })
