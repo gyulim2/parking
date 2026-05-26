@@ -66,6 +66,19 @@
 
 <hr>
 
+<!-- 할인 사유별 통계 -->
+<div class="section-title">[ 할인 사유별 통계 ]</div>
+<table>
+  <thead>
+    <tr><th>사유</th><th>건수</th><th>금액</th></tr>
+  </thead>
+  <tbody id="reason-body">
+    <tr><td colspan="3">로딩 중...</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
 <!-- 정산 이력 -->
 <div class="section-title">[ 정산 이력 ]</div>
 
@@ -162,7 +175,6 @@
 
   let lotId = '';
 
-  // ── 초기화 ────────────────────────────────────
   window.addEventListener('DOMContentLoaded', async () => {
     try {
       const res = await fetch(`${API}/admin/me`);
@@ -186,12 +198,12 @@
     loadWeek(q);
     loadMonth(q);
     loadCongestion();
+    loadByReason(q);
     loadPayments();
     loadEntries();
     loadExits();
   }
 
-  // ── 오늘 수익 ─────────────────────────────────
   async function loadToday(q) {
     try {
       const res  = await fetch(`${API}/stats/revenue/today${q ? '?' + q : ''}`);
@@ -206,7 +218,7 @@
     }
   }
 
-  // ── A vs B 비교 ───────────────────────────────
+  // A 백화점 vs B 아파트 수익 비교
   async function loadCompare() {
     const tbl = document.getElementById('compare-table');
     try {
@@ -225,7 +237,6 @@
     }
   }
 
-  // ── 주간 수익 ─────────────────────────────────
   async function loadWeek(q) {
     const el = document.getElementById('week-chart');
     try {
@@ -243,7 +254,6 @@
     }
   }
 
-  // ── 월간 수익 ─────────────────────────────────
   async function loadMonth(q) {
     const el = document.getElementById('month-chart');
     try {
@@ -260,12 +270,11 @@
     }
   }
 
-  // ── 시간대별 혼잡도 ───────────────────────────
   async function loadCongestion() {
     const el   = document.getElementById('congestion-chart');
     const lbl  = document.getElementById('congestion-lbl');
-    const cLot = lotId || '1';
-    lbl.textContent = `(${cLot === '1' ? 'A 백화점' : 'B 아파트'} 기준)`;
+    const cLot = lotId || '1';  // 전체 선택 시 백화점 기준 (혼잡도는 주차장별로만 조회 가능)
+    lbl.textContent = lotId ? `(${cLot === '1' ? 'A 백화점' : 'B 아파트'} 기준)` : '(A 백화점 기준, 전체 미지원)';
     try {
       const res  = await fetch(`${API}/stats/congestion?lot_id=${cLot}`);
       const json = await res.json();
@@ -278,7 +287,6 @@
     }
   }
 
-  // ── 할인 사유별 ───────────────────────────────
   async function loadByReason(q) {
     const tbody = document.getElementById('reason-body');
     try {
@@ -304,7 +312,6 @@
     return `<tr><td>${REASON_KO[r.reason] ?? r.reason}</td><td>${r.count}건</td><td>${amt}</td></tr>`;
   }
 
-  // ── 정산 이력 ─────────────────────────────────
   async function loadPayments() {
     const tbody = document.getElementById('pay-body');
     const count = document.getElementById('pay-count');
@@ -350,7 +357,6 @@
     loadPayments();
   }
 
-  // ── 입차 이력 ─────────────────────────────────
   const USER_TYPE_KO = { employee:'직원', resident:'입주민', visitor:'방문객', general:'일반' };
 
   async function loadEntries() {
@@ -379,7 +385,6 @@
     }
   }
 
-  // ── 출차 이력 ─────────────────────────────────
   async function loadExits() {
     const tbody = document.getElementById('exit-body');
     const count = document.getElementById('exit-count');
@@ -412,7 +417,7 @@
     }
   }
 
-  // ── 바 차트 ───────────────────────────────────
+  // 텍스트 기반 바 차트 렌더링
   function renderBarTable(data, labelKey, valKey, unit) {
     if (!data || !data.length) return '데이터 없음';
     let max = 0;
@@ -431,13 +436,12 @@
     return `<table style="border:none;border-collapse:collapse">${rows}</table>`;
   }
 
-  // ── 로그아웃 ──────────────────────────────────
   async function logout() {
     try { await fetch(`${API}/admin/logout`, { method: 'POST' }); } catch {}
     location.href = 'login.html';
   }
 
-  // ── 목업 데이터 ───────────────────────────────
+  // 서버 연결 실패 시 쓸 목업 데이터
   const MOCK_CONGESTION = [
     { label:'00시', entry_count:0  }, { label:'01시', entry_count:0  },
     { label:'02시', entry_count:0  }, { label:'03시', entry_count:0  },

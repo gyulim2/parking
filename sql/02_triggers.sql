@@ -27,7 +27,7 @@ BEGIN
 END$$
 
 -- 입차 시 해당 자리 점유 표시
--- exit_time NULL 인 경우만 처리 (더미데이터처럼 입·출차를 동시에 넣을 때 오작동 방지)
+-- exit_time이 NULL일 때만 처리 (더미데이터처럼 입출차를 한 번에 넣으면 오작동하기 때문)
 CREATE TRIGGER trg_spot_occupied_on_enter
 AFTER INSERT ON ParkingRecord
 FOR EACH ROW
@@ -39,7 +39,7 @@ BEGIN
     END IF;
 END$$
 
--- 출차 시 자리 해제 (exit_time 이 NULL → NOT NULL 로 바뀌는 순간만)
+-- 출차 시 자리 해제 (exit_time이 NULL에서 값으로 바뀌는 순간에만)
 CREATE TRIGGER trg_spot_released_on_exit
 AFTER UPDATE ON ParkingRecord
 FOR EACH ROW
@@ -83,8 +83,26 @@ BEGIN
     END IF;
 END$$
 
+-- 같은 번호판이 이미 주차 중이면 재입차 차단
+CREATE TRIGGER trg_no_double_entry
+BEFORE INSERT ON ParkingRecord
+FOR EACH ROW
+BEGIN
+    DECLARE v_active INT;
+
+    SELECT COUNT(*) INTO v_active
+      FROM ParkingRecord
+     WHERE plate_number = NEW.plate_number
+       AND exit_time IS NULL;
+
+    IF v_active > 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '이미 주차 중인 차량입니다.';
+    END IF;
+END$$
+
 -- 정산 데이터 일관성 검증
--- discount_reason·discount_rate·final_fee 가 맞지 않으면 저장 거부
+-- discount_reason, discount_rate, final_fee 세 값이 안 맞으면 저장 거부
 CREATE TRIGGER trg_payment_consistency
 BEFORE INSERT ON Payment
 FOR EACH ROW

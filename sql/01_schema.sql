@@ -6,10 +6,10 @@ CREATE DATABASE parking_db
 
 USE parking_db;
 
--- ParkingLot ─── ParkingSpot ─── ParkingRecord ─── Payment
---           ├─── DeptEmployee ── SeasonPass
---           └─── AptUnit ─────── AptResident
---                            └── AptMonthlyPayment
+-- ParkingLot -> ParkingSpot -> ParkingRecord -> Payment
+--           -> DeptEmployee -> SeasonPass
+--           -> AptUnit -> AptResident
+--                      -> AptMonthlyPayment
 
 
 CREATE TABLE ParkingLot (
@@ -75,13 +75,15 @@ CREATE TABLE AptUnit (
     unit_id     INT         NOT NULL AUTO_INCREMENT,
     lot_id      INT         NOT NULL,
     unit_number VARCHAR(20) NOT NULL,
+    monthly_fee INT         NOT NULL DEFAULT 50000,  -- 월 주차 관리비 (원)
     CONSTRAINT pk_apt_unit    PRIMARY KEY (unit_id),
     CONSTRAINT uq_apt_unit    UNIQUE (lot_id, unit_number),
     CONSTRAINT fk_au_lot      FOREIGN KEY (lot_id)
         REFERENCES ParkingLot (lot_id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
-    CONSTRAINT chk_unit_number CHECK (CHAR_LENGTH(unit_number) > 0)
+    CONSTRAINT chk_unit_number  CHECK (CHAR_LENGTH(unit_number) > 0),
+    CONSTRAINT chk_monthly_fee  CHECK (monthly_fee >= 0)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci;
@@ -168,8 +170,8 @@ CREATE TABLE ParkingRecord (
   COLLATE = utf8mb4_unicode_ci;
 
 
--- 앱 로그인 사용자 (관리자 / 스태프)
--- pwd_hash: SHA2(평문비밀번호, 256) → VARCHAR(64)
+-- 관리자/스태프 로그인용
+-- pwd_hash는 SHA2-256 해시값으로 저장 (64자)
 CREATE TABLE AppUser (
     user_id  VARCHAR(50)              NOT NULL,
     pwd_hash VARCHAR(64)              NOT NULL COMMENT 'SHA2-256 해시값',
@@ -180,7 +182,7 @@ CREATE TABLE AppUser (
   COLLATE = utf8mb4_unicode_ci;
 
 
--- final_fee = CEIL(raw_fee * (1 - discount_rate))
+-- 실제 결제금액: CEIL(raw_fee * (1 - discount_rate))
 CREATE TABLE Payment (
     payment_id      INT          NOT NULL AUTO_INCREMENT,
     record_id       INT          NOT NULL,

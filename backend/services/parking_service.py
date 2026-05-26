@@ -4,9 +4,8 @@ from dto.parking_dto import ParkEnterRequest, ParkExitRequest, ParkingRecordDTO
 from dao import parking_record_dao, parking_spot_dao, payment_dao, season_pass_dao
 
 
-# ── 차량 등록 (upsert) ────────────────────────────────────────────────────────
-
 def upsert_vehicle(plate_number: str, is_disabled: bool, is_ev: bool) -> None:
+    # 미등록 차량이면 Vehicle에 추가, 이미 있으면 DB 값 그대로 유지
     conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
@@ -23,8 +22,6 @@ def upsert_vehicle(plate_number: str, is_disabled: bool, is_ev: bool) -> None:
         conn.close()
 
 
-# ── 입차 ──────────────────────────────────────────────────────────────────────
-
 def enter(req: ParkEnterRequest) -> None:
     parking_record_dao.call_enter(
         plate_number=req.plate_number,
@@ -33,8 +30,6 @@ def enter(req: ParkEnterRequest) -> None:
         user_type=req.user_type,
     )
 
-
-# ── 출차 / 정산 ───────────────────────────────────────────────────────────────
 
 def exit_and_pay(req: ParkExitRequest) -> dict:
     record = parking_record_dao.find_by_id(req.record_id)
@@ -68,9 +63,8 @@ def find_active_record(plate_number: str) -> ParkingRecordDTO | None:
     return parking_record_dao.find_active_by_plate(plate_number)
 
 
-# ── 내부 헬퍼 ─────────────────────────────────────────────────────────────────
-
 def _resolve_method(record: ParkingRecordDTO, preferred: str) -> str:
+    # 입주민/정기권 직원은 결제 수단을 강제로 지정, 나머지는 프론트에서 받은 값 사용
     if record.user_type == "resident":
         return "resident_free"
     if record.user_type == "employee" and season_pass_dao.has_active_pass(record.plate_number):

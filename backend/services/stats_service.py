@@ -141,28 +141,40 @@ def get_revenue_by_reason(lot_id=None) -> list[dict]:
 
 
 def get_records(lot_id=None, status=None) -> list[dict]:
-    conditions = ["1=1"]
-    params = []
-    if lot_id is not None:
-        conditions.append("ps.lot_id = %s")
-        params.append(lot_id)
+    # 현재 주차 중인 차량은 v_current_parked 뷰 사용
     if status == "active":
-        conditions.append("pr.exit_time IS NULL")
-    elif status == "exited":
-        conditions.append("pr.exit_time IS NOT NULL")
+        # 뷰 컬럼은 별칭 없이 lot_id 직접 참조 (ps.lot_id 쓰면 오류)
+        cond   = "AND lot_id = %s" if lot_id is not None else ""
+        params = (lot_id,)         if lot_id is not None else ()
+        sql = f"""
+            SELECT record_id, plate_number, lot_name, spot_id, user_type,
+                   entry_time, NULL AS exit_time, parked_minutes AS parking_minutes
+            FROM v_current_parked
+            WHERE 1=1 {cond}
+            ORDER BY record_id DESC
+            LIMIT 200
+        """
+    else:
+        conditions = ["1=1"]
+        params = []
+        if lot_id is not None:
+            conditions.append("ps.lot_id = %s")
+            params.append(lot_id)
+        if status == "exited":
+            conditions.append("pr.exit_time IS NOT NULL")
+        sql = f"""
+            SELECT pr.record_id, pr.plate_number,
+                   pl.name AS lot_name, pr.spot_id, pr.user_type,
+                   pr.entry_time, pr.exit_time,
+                   TIMESTAMPDIFF(MINUTE, pr.entry_time, pr.exit_time) AS parking_minutes
+            FROM ParkingRecord pr
+            JOIN ParkingSpot ps ON ps.spot_id = pr.spot_id
+            JOIN ParkingLot  pl ON pl.lot_id  = ps.lot_id
+            WHERE {" AND ".join(conditions)}
+            ORDER BY pr.record_id DESC
+            LIMIT 200
+        """
 
-    sql = f"""
-        SELECT pr.record_id, pr.plate_number,
-               pl.name AS lot_name, pr.spot_id, pr.user_type,
-               pr.entry_time, pr.exit_time,
-               TIMESTAMPDIFF(MINUTE, pr.entry_time, pr.exit_time) AS parking_minutes
-        FROM ParkingRecord pr
-        JOIN ParkingSpot ps ON ps.spot_id = pr.spot_id
-        JOIN ParkingLot  pl ON pl.lot_id  = ps.lot_id
-        WHERE {" AND ".join(conditions)}
-        ORDER BY pr.record_id DESC
-        LIMIT 200
-    """
     conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
