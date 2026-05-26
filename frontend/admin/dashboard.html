@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Owner 대시보드</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    .section-title { font-weight: bold; margin-bottom: 10px; }
+    .row { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 4px; }
+    .filter-bar { margin-bottom: 4px; }
+    .filter-bar label { margin-right: 8px; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+
+<h2>이경규의 파킹랏 · Owner 대시보드</h2>
+<hr>
+
+<div class="filter-bar">
+  주차장 필터:
+  <label><input type="radio" name="lot" id="lot-all" value=""  checked onchange="onLotChange()"> 전체</label>
+  <label><input type="radio" name="lot" id="lot-1"   value="1" onchange="onLotChange()"> A 백화점</label>
+  <label><input type="radio" name="lot" id="lot-2"   value="2" onchange="onLotChange()"> B 아파트</label>
+  &nbsp;&nbsp;
+  <input type="button" value="로그아웃" onclick="logout()" />
+</div>
+
+<hr>
+
+<!-- 오늘 수익 + 비교 -->
+<div class="row">
+  <div>
+    <div class="section-title">[ 오늘 수익 ]</div>
+    <table>
+      <tr><td>대상</td><td id="today-lbl">전체</td></tr>
+      <tr><td>합계</td><td id="today-total">-</td></tr>
+    </table>
+  </div>
+  <div>
+    <div class="section-title">[ 주차장 비교 (전체 기간) ]</div>
+    <table id="compare-table">
+      <tr><th>주차장</th><th>수익 합계</th></tr>
+      <tr><td colspan="2">로딩 중...</td></tr>
+    </table>
+  </div>
+</div>
+
+<hr>
+
+<!-- 주간 + 월간 + 혼잡도 -->
+<div class="row">
+  <div>
+    <div class="section-title">[ 주간 수익 (요일별) ]</div>
+    <div id="week-chart">로딩 중...</div>
+  </div>
+  <div>
+    <div class="section-title">[ 월간 수익 (주별) ]</div>
+    <div id="month-chart">로딩 중...</div>
+  </div>
+  <div>
+    <div class="section-title">[ 시간대별 혼잡도 ] <span id="congestion-lbl" style="color:#888; font-weight:normal;"></span></div>
+    <div id="congestion-chart">로딩 중...</div>
+  </div>
+</div>
+
+<hr>
+
+<!-- 할인 사유별 통계 -->
+<div class="section-title">[ 할인 사유별 통계 ]</div>
+<table>
+  <thead>
+    <tr><th>사유</th><th>건수</th><th>금액</th></tr>
+  </thead>
+  <tbody id="reason-body">
+    <tr><td colspan="3">로딩 중...</td></tr>
+  </tbody>
+</table>
+
+<hr>
+
+<!-- 정산 이력 -->
+<div class="section-title">[ 정산 이력 ]</div>
+
+날짜:
+<input type="date" id="pay-date" />
+<input type="button" value="조회" onclick="loadPayments()" />
+<input type="button" value="초기화" onclick="clearPayFilter()" />
+<span id="pay-count" style="color:#888; margin-left:6px;"></span>
+
+<br><br>
+
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>번호판</th>
+      <th>입차 시각</th>
+      <th>출차 시각</th>
+      <th>기본 요금</th>
+      <th>할인 사유</th>
+      <th>할인율</th>
+      <th>최종 요금</th>
+      <th>결제 수단</th>
+    </tr>
+  </thead>
+  <tbody id="pay-body">
+    <tr><td colspan="9">로딩 중...</td></tr>
+  </tbody>
+</table>
+
+<br>
+
+<hr>
+
+<!-- 입차 + 출차 이력 -->
+<div class="row" style="align-items:flex-start">
+  <div style="flex:1; min-width:0; overflow-x:auto">
+    <div class="section-title">[ 입차 이력 ] <span id="entry-count" style="color:#888; font-weight:normal;"></span></div>
+    <table style="width:100%">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>번호판</th>
+          <th>주차장</th>
+          <th>자리</th>
+          <th>이용자 유형</th>
+          <th>입차 시각</th>
+          <th>상태</th>
+        </tr>
+      </thead>
+      <tbody id="entry-body">
+        <tr><td colspan="7">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="flex:1; min-width:0; overflow-x:auto">
+    <div class="section-title">[ 출차 이력 ] <span id="exit-count" style="color:#888; font-weight:normal;"></span></div>
+    <table style="width:100%">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>번호판</th>
+          <th>주차장</th>
+          <th>입차 시각</th>
+          <th>출차 시각</th>
+          <th>주차 시간</th>
+        </tr>
+      </thead>
+      <tbody id="exit-body">
+        <tr><td colspan="6">로딩 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<br>
+
+<script>
+  const API = '/api';
+
+  const REASON_KO = {
+    season_pass  : '정기권',
+    resident_free: '입주민 무료',
+    disabled     : '장애인 할인',
+    none         : '없음',
+  };
+  const METHOD_KO = {
+    season_pass  : '정기권',
+    resident_free: '입주민 무료',
+    card         : '카드',
+    cash         : '현금',
+    app          : '앱 결제',
+  };
+
+  let lotId = '';
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const res = await fetch(`${API}/admin/me`);
+      if (res.status === 401) { location.href = 'login.html'; return; }
+    } catch {
+      // 서버 미연결 → mock 모드
+    }
+    loadAll();
+  });
+
+  function onLotChange() {
+    const checked = document.querySelector('input[name="lot"]:checked');
+    lotId = checked ? checked.value : '';
+    loadAll();
+  }
+
+  function loadAll() {
+    const q = lotId ? `lot_id=${lotId}` : '';
+    loadToday(q);
+    loadCompare();
+    loadWeek(q);
+    loadMonth(q);
+    loadCongestion();
+    loadByReason(q);
+    loadPayments();
+    loadEntries();
+    loadExits();
+  }
+
+  async function loadToday(q) {
+    try {
+      const res  = await fetch(`${API}/stats/revenue/today${q ? '?' + q : ''}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      document.getElementById('today-total').textContent = `${(json.data.total ?? 0).toLocaleString()}원`;
+      document.getElementById('today-lbl').textContent   = lotId === '1' ? 'A 백화점' : lotId === '2' ? 'B 아파트' : '전체';
+    } catch {
+      const mock = { '':'42,000원', '1':'18,000원', '2':'24,000원' };
+      document.getElementById('today-total').textContent = mock[lotId] ?? '42,000원' + ' (mock)';
+      document.getElementById('today-lbl').textContent   = lotId === '1' ? 'A 백화점' : lotId === '2' ? 'B 아파트' : '전체';
+    }
+  }
+
+  // A 백화점 vs B 아파트 수익 비교
+  async function loadCompare() {
+    const tbl = document.getElementById('compare-table');
+    try {
+      const res  = await fetch(`${API}/stats/revenue/compare`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      tbl.innerHTML = '<tr><th>주차장</th><th>수익 합계</th></tr>'
+        + json.data.map(r =>
+          `<tr><td>${r.lot_name ?? (r.lot_id === 1 ? 'A 백화점' : 'B 아파트')}</td><td>${(r.total ?? 0).toLocaleString()}원</td></tr>`
+        ).join('');
+    } catch {
+      tbl.innerHTML = `<tr><th>주차장</th><th>수익 합계</th></tr>
+        <tr><td>A 백화점</td><td>250,000원</td></tr>
+        <tr><td>B 아파트</td><td>183,000원</td></tr>
+        <tr><td colspan="2" style="color:#888;">(mock)</td></tr>`;
+    }
+  }
+
+  async function loadWeek(q) {
+    const el = document.getElementById('week-chart');
+    try {
+      const res  = await fetch(`${API}/stats/revenue/week${q ? '?' + q : ''}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      el.innerHTML = renderBarTable(json.data, 'weekday', 'total', '원');
+    } catch {
+      el.innerHTML = renderBarTable([
+        { weekday:'월', total:25000 }, { weekday:'화', total:32000 },
+        { weekday:'수', total:18000 }, { weekday:'목', total:41000 },
+        { weekday:'금', total:55000 }, { weekday:'토', total:67000 },
+        { weekday:'일', total:48000 },
+      ], 'weekday', 'total', '원') + '<br><span style="color:#888;">(mock)</span>';
+    }
+  }
+
+  async function loadMonth(q) {
+    const el = document.getElementById('month-chart');
+    try {
+      const res  = await fetch(`${API}/stats/revenue/month${q ? '?' + q : ''}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      const data = json.data.map(r => ({ label: `${r.week}주차`, total: r.total }));
+      el.innerHTML = renderBarTable(data, 'label', 'total', '원');
+    } catch {
+      el.innerHTML = renderBarTable([
+        { label:'1주차', total:120000 }, { label:'2주차', total:180000 },
+        { label:'3주차', total:155000 }, { label:'4주차', total: 98000 },
+      ], 'label', 'total', '원') + '<br><span style="color:#888;">(mock)</span>';
+    }
+  }
+
+  async function loadCongestion() {
+    const el   = document.getElementById('congestion-chart');
+    const lbl  = document.getElementById('congestion-lbl');
+    const cLot = lotId || '1';  // 전체 선택 시 백화점 기준 (혼잡도는 주차장별로만 조회 가능)
+    lbl.textContent = lotId ? `(${cLot === '1' ? 'A 백화점' : 'B 아파트'} 기준)` : '(A 백화점 기준, 전체 미지원)';
+    try {
+      const res  = await fetch(`${API}/stats/congestion?lot_id=${cLot}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      const data = json.data.map(r => ({ label: `${String(r.hour).padStart(2,'0')}시`, entry_count: r.entry_count }));
+      el.innerHTML = renderBarTable(data, 'label', 'entry_count', '건');
+    } catch {
+      el.innerHTML = renderBarTable(MOCK_CONGESTION, 'label', 'entry_count', '건')
+        + '<br><span style="color:#888;">(mock)</span>';
+    }
+  }
+
+  async function loadByReason(q) {
+    const tbody = document.getElementById('reason-body');
+    try {
+      const res  = await fetch(`${API}/stats/revenue/by-reason${q ? '?' + q : ''}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      tbody.innerHTML = json.data.map(reasonRow).join('');
+    } catch {
+      tbody.innerHTML = [
+        { reason:'season_pass',   count:3, total_saved:162000 },
+        { reason:'resident_free', count:3, total_saved:183000 },
+        { reason:'disabled',      count:1, total:3000 },
+        { reason:'none',          count:1, total:15000 },
+      ].map(reasonRow).join('')
+        + `<tr><td colspan="3" style="color:#888;">(mock)</td></tr>`;
+    }
+  }
+
+  function reasonRow(r) {
+    const amt = r.total_saved != null
+      ? `절감 ${r.total_saved.toLocaleString()}원`
+      : `${(r.total ?? 0).toLocaleString()}원`;
+    return `<tr><td>${REASON_KO[r.reason] ?? r.reason}</td><td>${r.count}건</td><td>${amt}</td></tr>`;
+  }
+
+  async function loadPayments() {
+    const tbody = document.getElementById('pay-body');
+    const count = document.getElementById('pay-count');
+    const date  = document.getElementById('pay-date').value;
+    const params = [];
+    if (lotId) params.push(`lot_id=${lotId}`);
+    if (date)  params.push(`date=${date}`);
+    const qs = params.length ? '?' + params.join('&') : '';
+    try {
+      const res  = await fetch(`${API}/payments${qs}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      renderPayRows(tbody, count, json.data);
+    } catch {
+      renderPayRows(tbody, count, MOCK_PAYMENTS, true);
+    }
+  }
+
+  function renderPayRows(tbody, countEl, data, isMock = false) {
+    countEl.textContent = `총 ${data.length}건` + (isMock ? ' (mock)' : '');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="9">정산 이력이 없습니다.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(r => {
+      const discPct = Math.round((r.discount_rate ?? 0) * 100);
+      return `<tr>
+        <td>${r.payment_id}</td>
+        <td><b>${r.plate_number}</b></td>
+        <td>${r.entry_time}</td>
+        <td>${r.exit_time}</td>
+        <td style="text-align:right">${(r.raw_fee ?? 0).toLocaleString()}원</td>
+        <td>${REASON_KO[r.discount_reason] ?? r.discount_reason}</td>
+        <td style="text-align:right">${discPct}%</td>
+        <td style="text-align:right"><b>${(r.final_fee ?? 0).toLocaleString()}원</b></td>
+        <td>${METHOD_KO[r.method] ?? r.method}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function clearPayFilter() {
+    document.getElementById('pay-date').value = '';
+    loadPayments();
+  }
+
+  const USER_TYPE_KO = { employee:'직원', resident:'입주민', visitor:'방문객', general:'일반' };
+
+  async function loadEntries() {
+    const tbody = document.getElementById('entry-body');
+    const count = document.getElementById('entry-count');
+    const qs = lotId ? `?lot_id=${lotId}` : '';
+    try {
+      const res  = await fetch(`${API}/records${qs}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      const data = json.data;
+      count.textContent = `총 ${data.length}건`;
+      if (!data.length) { tbody.innerHTML = '<tr><td colspan="7">입차 이력이 없습니다.</td></tr>'; return; }
+      tbody.innerHTML = data.map(r => `<tr>
+        <td>${r.record_id}</td>
+        <td><b>${r.plate_number}</b></td>
+        <td>${r.lot_name}</td>
+        <td>#${r.spot_id}</td>
+        <td>${USER_TYPE_KO[r.user_type] ?? r.user_type}</td>
+        <td>${r.entry_time}</td>
+        <td>${r.exit_time ? '출차완료' : '<b style="color:#2563eb">주차중</b>'}</td>
+      </tr>`).join('');
+    } catch {
+      count.textContent = '(서버 미연결)';
+      tbody.innerHTML = '<tr><td colspan="7">데이터를 불러올 수 없습니다.</td></tr>';
+    }
+  }
+
+  async function loadExits() {
+    const tbody = document.getElementById('exit-body');
+    const count = document.getElementById('exit-count');
+    const params = ['status=exited'];
+    if (lotId) params.push(`lot_id=${lotId}`);
+    try {
+      const res  = await fetch(`${API}/records?${params.join('&')}`);
+      const json = await res.json();
+      if (!json.ok) throw 0;
+      const data = json.data;
+      count.textContent = `총 ${data.length}건`;
+      if (!data.length) { tbody.innerHTML = '<tr><td colspan="6">출차 이력이 없습니다.</td></tr>'; return; }
+      tbody.innerHTML = data.map(r => {
+        const mins = r.parking_minutes ?? 0;
+        const duration = mins >= 60
+          ? `${Math.floor(mins/60)}시간 ${mins%60}분`
+          : `${mins}분`;
+        return `<tr>
+          <td>${r.record_id}</td>
+          <td><b>${r.plate_number}</b></td>
+          <td>${r.lot_name}</td>
+          <td>${r.entry_time}</td>
+          <td>${r.exit_time}</td>
+          <td>${duration}</td>
+        </tr>`;
+      }).join('');
+    } catch {
+      count.textContent = '(서버 미연결)';
+      tbody.innerHTML = '<tr><td colspan="6">데이터를 불러올 수 없습니다.</td></tr>';
+    }
+  }
+
+  // 텍스트 기반 바 차트 렌더링
+  function renderBarTable(data, labelKey, valKey, unit) {
+    if (!data || !data.length) return '데이터 없음';
+    let max = 0;
+    data.forEach(r => { if ((r[valKey] ?? 0) > max) max = r[valKey] ?? 0; });
+    if (max === 0) max = 1;
+    const rows = data.map(r => {
+      const val   = r[valKey] ?? 0;
+      const width = Math.round((val / max) * 160);
+      const disp  = unit === '원' ? `${val.toLocaleString()}원` : `${val}${unit}`;
+      return `<tr>
+        <td style="border:none;padding:2px 6px;width:48px">${r[labelKey]}</td>
+        <td style="border:none;padding:2px 6px;width:176px"><span class="bar" style="width:${width}px"></span></td>
+        <td style="border:none;padding:2px 6px">${disp}</td>
+      </tr>`;
+    }).join('');
+    return `<table style="border:none;border-collapse:collapse">${rows}</table>`;
+  }
+
+  async function logout() {
+    try { await fetch(`${API}/admin/logout`, { method: 'POST' }); } catch {}
+    location.href = 'login.html';
+  }
+
+  // 서버 연결 실패 시 쓸 목업 데이터
+  const MOCK_CONGESTION = [
+    { label:'00시', entry_count:0  }, { label:'01시', entry_count:0  },
+    { label:'02시', entry_count:0  }, { label:'03시', entry_count:0  },
+    { label:'04시', entry_count:0  }, { label:'05시', entry_count:0  },
+    { label:'06시', entry_count:0  }, { label:'07시', entry_count:3  },
+    { label:'08시', entry_count:12 }, { label:'09시', entry_count:20 },
+    { label:'10시', entry_count:18 }, { label:'11시', entry_count:15 },
+    { label:'12시', entry_count:22 }, { label:'13시', entry_count:19 },
+    { label:'14시', entry_count:16 }, { label:'15시', entry_count:14 },
+    { label:'16시', entry_count:13 }, { label:'17시', entry_count:17 },
+    { label:'18시', entry_count:21 }, { label:'19시', entry_count:11 },
+    { label:'20시', entry_count:8  }, { label:'21시', entry_count:5  },
+    { label:'22시', entry_count:2  }, { label:'23시', entry_count:1  },
+  ];
+
+  const MOCK_PAYMENTS = [
+    { payment_id:8, plate_number:'44자1234', entry_time:'2026-05-12 13:00:00', exit_time:'2026-05-12 14:00:00', raw_fee:6000,  discount_rate:0.50, discount_reason:'disabled',      final_fee:3000,  method:'card'          },
+    { payment_id:7, plate_number:'12가3456', entry_time:'2026-05-12 09:00:00', exit_time:'2026-05-12 18:00:00', raw_fee:54000, discount_rate:1.00, discount_reason:'season_pass',   final_fee:0,     method:'season_pass'   },
+    { payment_id:6, plate_number:'78라1234', entry_time:'2026-05-12 10:00:00', exit_time:'2026-05-12 12:00:00', raw_fee:12000, discount_rate:1.00, discount_reason:'resident_free', final_fee:0,     method:'resident_free' },
+    { payment_id:5, plate_number:'55차5678', entry_time:'2026-05-11 15:00:00', exit_time:'2026-05-11 17:30:00', raw_fee:15000, discount_rate:0.00, discount_reason:'none',          final_fee:15000, method:'app'           },
+    { payment_id:4, plate_number:'90마5678', entry_time:'2026-05-11 08:00:00', exit_time:'2026-05-11 20:00:00', raw_fee:72000, discount_rate:1.00, discount_reason:'resident_free', final_fee:0,     method:'resident_free' },
+    { payment_id:3, plate_number:'34나5678', entry_time:'2026-05-10 10:00:00', exit_time:'2026-05-10 14:00:00', raw_fee:24000, discount_rate:1.00, discount_reason:'season_pass',   final_fee:0,     method:'season_pass'   },
+  ];
+</script>
+</div>
+</body>
+</html>

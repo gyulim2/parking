@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>주차 입차</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    #wrap { width: 1150px; margin: 40px auto; padding: 0; }
+
+    /* ─── 평면도 ─── */
+    #lot-bg {
+      background: #f0f0f0;
+      padding: 16px;
+      display: inline-block;
+      border: 1px solid #ccc;
+    }
+    .map-entry {
+      text-align: center;
+      margin: 0 0 12px;
+      font-size: 0.78em;
+      color: #555;
+      border-top: 3px solid #888;
+      padding: 4px 0;
+      letter-spacing: 0.05em;
+    }
+    .floor-header {
+      font-size: 0.75em;
+      font-weight: bold;
+      color: #444;
+      padding: 2px 0;
+      display: block;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 8px;
+    }
+    .floor-row { display: flex; align-items: flex-start; margin-bottom: 4px; }
+    .zone-row-gap { margin: 8px 0; }
+    .zone-label { font-size: 0.68em; color: #888; text-align: center; margin-bottom: 4px; }
+    .zone-road {
+      width: 12px;
+      align-self: stretch;
+      margin: 14px 3px 0;
+      border-left: 1px dashed #ccc;
+      border-right: 1px dashed #ccc;
+    }
+    .zone-road span { display: none; }
+    .spot-row { display: flex; gap: 3px; margin-bottom: 3px; }
+    .floor-divider { margin: 12px 0; border-top: 1px solid #ccc; }
+
+    /* ─── 자리 ─── */
+    .seat {
+      width: 22px; height: 32px;
+      border-radius: 2px;
+      border: 1px solid #bbb;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65em; cursor: pointer; user-select: none;
+    }
+    .seat.general  { background: #ddeeff; color: #336; border-color: #aac; }
+    .seat.disabled { background: #d4edda; color: #155724; border-color: #aad; }
+    .seat.ev       { background: #fff3cd; color: #856404; border-color: #ddc; }
+    .seat.occupied { background: #d0d0d0; color: #999;   cursor: default; border-color: #bbb; }
+    .seat.selected { background: #2563eb; color: #fff;   border-color: #1d4ed8; }
+
+    /* ─── 범례 ─── */
+    .map-legend { margin-top: 14px; font-size: 0.72em; display: flex; gap: 12px; flex-wrap: wrap; }
+    .leg { display: inline-block; width: 10px; height: 14px; border-radius: 1px; vertical-align: middle; border: 1px solid #bbb; }
+    .leg.general  { background: #ddeeff; border-color: #aac; }
+    .leg.disabled { background: #d4edda; }
+    .leg.ev       { background: #fff3cd; border-color: #ddc; }
+    .leg.occupied { background: #d0d0d0; border-color: #bbb; }
+    .leg.selected { background: #2563eb; border-color: #1d4ed8; }
+
+    /* ─── 층 버튼 ─── */
+    .floor-btn { cursor: pointer; }
+    .floor-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+    /* ─── 미등록 차량 속성 ─── */
+    #manual-attrs { display: none; margin-top: 6px; }
+    #manual-attrs label { margin-right: 16px; cursor: pointer; }
+
+    #msg { color: #d32f2f; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+
+<div class="nav">
+  <a href="../index.html">← 메인</a> &nbsp;|&nbsp; <a href="exit.html">출차 →</a>
+</div>
+
+<h2>주차 입차</h2>
+
+<!-- ① 주차장 선택 -->
+<div id="step-lot">
+  <b>주차장 선택</b><br /><br />
+  <label><input type="radio" name="lot" value="1" onchange="onLotChange()"> A 백화점 주차장</label>
+  &nbsp;&nbsp;
+  <label><input type="radio" name="lot" value="2" onchange="onLotChange()"> B 아파트 주차장</label>
+</div>
+
+<br />
+
+<!-- ② 주차장 선택 후 표시 -->
+<div id="step-form" style="display:none">
+
+<b>선택된 주차장:</b> <span id="selected-lot-name">—</span>
+
+<br /><br />
+
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr>
+    <td>차량 번호판</td>
+    <td>
+      <input type="text" id="plate" maxlength="9" placeholder="12가3456" />
+      <br /><small>예) 12가3456 &nbsp;/&nbsp; 123나4567</small>
+    </td>
+  </tr>
+  <tr>
+    <td>이용자 유형</td>
+    <td><span id="user-type-display">번호판 입력 후 자동 조회</span></td>
+  </tr>
+  <tr>
+    <td>차량 특성</td>
+    <td>
+      <span id="vehicle-tags">—</span>
+      <div id="manual-attrs">
+        <small>등록되지 않은 차량입니다. 해당되면 선택하세요:</small><br />
+        <label><input type="checkbox" id="cb-disabled" onchange="onAttrChange()"> 장애인 차량</label>
+        <label><input type="checkbox" id="cb-ev"       onchange="onAttrChange()"> 전기차</label>
+      </div>
+    </td>
+  </tr>
+  <tr id="visitor-row" style="display:none">
+    <td>방문 세대</td>
+    <td>
+      <select id="visit-unit-select" onchange="onUnitChange()">
+        <option value="">세대 선택 (선택하면 방문객으로 입차)</option>
+      </select>
+    </td>
+  </tr>
+  <tr>
+    <td>입차 시간</td>
+    <td><span id="entry-time">—</span></td>
+  </tr>
+</table>
+
+<br />
+
+<!-- 층 선택: 백화점만 -->
+<div id="floor-section" style="display:none">
+  <b>층 선택</b><br />
+  <span id="floor-btns"></span>
+  <br /><br />
+</div>
+
+<b>주차 자리 선택</b>
+&nbsp; <small id="auto-msg" style="color:blue; display:none">자동 배정됨 — 다른 자리 클릭 시 변경 가능</small>
+<br />
+
+<div id="spot-map"></div>
+
+<br />
+
+<b>선택된 자리</b><br />
+<table border="1" cellpadding="6" cellspacing="0" id="ticket-table" style="display:none">
+  <tr><td>주차장</td><td id="tk-lot">—</td></tr>
+  <tr><td>층</td><td id="tk-floor">—</td></tr>
+  <tr><td>구역</td><td id="tk-zone">—</td></tr>
+  <tr><td>자리 번호</td><td id="tk-spot-id">—</td></tr>
+  <tr><td>자리 유형</td><td id="tk-spot-type">—</td></tr>
+  <tr><td>차량 번호</td><td id="tk-plate">—</td></tr>
+  <tr><td>입차 시간</td><td id="tk-time">—</td></tr>
+</table>
+
+<br />
+
+<input type="button" value="입차 확인" id="btn-enter" disabled onclick="submitEnter()" />
+<input type="button" value="초기화" onclick="resetAll()" />
+
+<br /><br />
+<span id="msg"></span>
+
+</div><!-- /step-form -->
+
+</div><!-- /wrap -->
+
+<script>
+  const API = '/api';
+  const ZONES_PER_ROW = 4;
+
+  let state = {
+    lotId      : null,
+    floor      : null,       // 백화점 선택 층
+    spotId     : null,
+    isAutoSpot : false,
+    spots      : [],
+    vehicle    : null,       // null = 미등록
+    units      : [],
+    visitUnitId: null,
+    entryTime  : null,
+  };
+
+  let lookupTimer = null;
+
+  // 현재 시각을 입차 시간란에 표시
+  function updateClock() {
+    const now = new Date();
+    state.entryTime = now;
+    const s = now.toLocaleString('ko-KR', {
+      year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+    });
+    document.getElementById('entry-time').textContent = s;
+    if (state.spotId) document.getElementById('tk-time').textContent = s;
+  }
+
+  // 주차장(백화점/아파트) 선택 시 UI 초기화
+  function onLotChange() {
+    const val = document.querySelector('input[name="lot"]:checked');
+    if (!val) return;
+
+    state.lotId      = Number(val.value);
+    state.floor      = null;
+    state.visitUnitId = null;
+
+    document.getElementById('selected-lot-name').textContent =
+      state.lotId === 1 ? 'A 백화점 주차장' : 'B 아파트 주차장';
+    document.getElementById('step-form').style.display = '';
+    document.getElementById('floor-section').style.display =
+      state.lotId === 1 ? '' : 'none';
+
+    resetVehicleUI();
+    loadSpots();
+    if (state.lotId === 2) loadUnits();
+  }
+
+  // 번호판 7자 이상 입력되면 600ms 후 차량 조회
+  document.getElementById('plate').addEventListener('input', function () {
+    clearTimeout(lookupTimer);
+    const plate = this.value.trim();
+    if (plate.length < 7) { resetVehicleUI(false); return; }
+    lookupTimer = setTimeout(() => lookupVehicle(plate), 600);
+  });
+
+  async function lookupVehicle(plate) {
+    document.getElementById('user-type-display').textContent = '조회 중...';
+    try {
+      const res  = await fetch(`${API}/vehicle?plate=${encodeURIComponent(plate)}`);
+      const json = await res.json();
+      // 실제 API: { ok: true, data: {...} | null }
+      state.vehicle = (json.ok !== undefined) ? json.data : json;
+    } catch {
+      state.vehicle = getMockVehicle(plate);
+    }
+    updateVehicleUI();
+  }
+
+  function updateVehicleUI() {
+    const veh    = state.vehicle;
+    const typeKo = { employee:'직원', resident:'입주민', general:'일반' };
+
+    if (veh) {
+      const typeKoApt  = { resident:'입주민' };
+      const typeKoDept = { employee:'직원', general:'일반' };
+      const label = state.lotId === 2
+        ? (typeKoApt[veh.user_type]  ?? '입주민')
+        : (typeKoDept[veh.user_type] ?? '일반');
+      document.getElementById('user-type-display').textContent = label;
+      const tags = [];
+      if (veh.is_disabled) tags.push('[장애인]');
+      if (veh.is_ev)       tags.push('[전기차]');
+      document.getElementById('vehicle-tags').textContent = tags.join(' ') || '일반 차량';
+      document.getElementById('manual-attrs').style.display = 'none';
+      // 아파트 입주민: 즉시 자동 배정
+      if (state.lotId === 2 && state.spots.length) {
+        autoAssign();
+      }
+    } else {
+      // 미등록
+      const unregLabel = state.lotId === 2 ? '방문객 (세대를 선택하세요)' : '미등록 (일반)';
+      document.getElementById('user-type-display').textContent = unregLabel;
+      document.getElementById('vehicle-tags').textContent = '';
+      // 백화점: 자가신고 체크박스 / 아파트: 방문 세대 드롭다운
+      document.getElementById('manual-attrs').style.display =
+        state.lotId === 1 ? '' : 'none';
+    }
+
+    // 방문 세대: 아파트 + 미등록만
+    document.getElementById('visitor-row').style.display =
+      (state.lotId === 2 && !veh) ? '' : 'none';
+
+    checkReady();
+  }
+
+  // clearPlate=true면 번호판도 초기화 (resetAll용), false면 유지 (lot 변경용)
+  function resetVehicleUI(clearPlate = true) {
+    state.vehicle    = null;
+    state.spotId     = null;
+    state.isAutoSpot = false;
+    state.visitUnitId = null;
+    state.floor      = null;
+
+    if (clearPlate) document.getElementById('plate').value = '';
+    document.getElementById('user-type-display').textContent = '번호판 입력 후 자동 조회';
+    document.getElementById('vehicle-tags').textContent      = '—';
+    document.getElementById('cb-disabled').checked           = false;
+    document.getElementById('cb-ev').checked                 = false;
+    document.getElementById('visit-unit-select').value       = '';
+    document.getElementById('manual-attrs').style.display    = 'none';
+    document.getElementById('visitor-row').style.display     = 'none';
+    document.getElementById('ticket-table').style.display    = 'none';
+    document.getElementById('auto-msg').style.display        = 'none';
+    document.getElementById('btn-enter').disabled            = true;
+    document.getElementById('msg').textContent               = '';
+    document.querySelectorAll('.floor-btn').forEach(b => b.classList.remove('active'));
+    renderMap();
+  }
+
+  // 장애인/전기차 체크박스 변경 → 자리 재배정
+  function onAttrChange() {
+    // 층이 선택돼 있으면 해당 층에서 재배정
+    if (state.floor !== null) autoAssignFromFloor(state.floor);
+  }
+
+  // 방문 세대 선택 시 자동 배정
+  function onUnitChange() {
+    const sel = document.getElementById('visit-unit-select');
+    state.visitUnitId = sel.value ? Number(sel.value) : null;
+    if (state.visitUnitId) {
+      autoAssign();
+    } else {
+      state.spotId = null;
+      document.getElementById('ticket-table').style.display = 'none';
+    }
+    checkReady();
+  }
+
+  async function loadSpots() {
+    try {
+      const res  = await fetch(`${API}/spots?lot_id=${state.lotId}`);
+      const json = await res.json();
+      state.spots = (json.ok !== undefined) ? json.data : json;
+    } catch {
+      state.spots = getMockSpots(state.lotId);
+    }
+    buildFloorButtons();
+    renderMap();
+  }
+
+  // 아파트 세대 목록을 드롭다운에 채움
+  async function loadUnits() {
+    try {
+      const res  = await fetch(`${API}/units?lot_id=2`);
+      const json = await res.json();
+      state.units = (json.ok !== undefined) ? json.data : json;
+    } catch {
+      state.units = getMockUnits();
+    }
+    const sel = document.getElementById('visit-unit-select');
+    sel.innerHTML = '<option value="">세대 선택 (선택하면 방문객으로 입차)</option>';
+    state.units.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.unit_id;
+      opt.textContent = u.unit_number;
+      sel.appendChild(opt);
+    });
+  }
+
+  // 백화점 층 버튼 생성
+  function buildFloorButtons() {
+    const floors = [];
+    state.spots.forEach(s => {
+      if (!floors.includes(s.floor)) floors.push(s.floor);
+    });
+    floors.sort((a, b) => a - b);
+    const fb = document.getElementById('floor-btns');
+    fb.innerHTML = '';
+    if (state.lotId !== 1) return;
+
+    floors.forEach(f => {
+      const btn = document.createElement('input');
+      btn.type      = 'button';
+      btn.className = 'floor-btn';
+      btn.value     = f < 0 ? `지하${Math.abs(f)}층` : `${f}층`;
+      btn.dataset.floor = f;
+      btn.onclick = () => {
+        document.querySelectorAll('.floor-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        autoAssignFromFloor(f);
+      };
+      fb.appendChild(btn);
+      fb.appendChild(document.createTextNode(' '));
+    });
+  }
+
+  // 선택한 층에서 빈 자리를 찾아 자동 배정
+  function autoAssignFromFloor(floor) {
+    state.floor = floor;
+    const veh        = state.vehicle;
+    const isDisabled = veh ? veh.is_disabled : document.getElementById('cb-disabled').checked;
+    const isEv       = veh ? veh.is_ev       : document.getElementById('cb-ev').checked;
+
+    const avail = state.spots.filter(s => !s.is_occupied && s.floor === floor);
+    if (!avail.length) {
+      setMsg(`지하${Math.abs(floor)}층은 현재 만석입니다.`);
+      state.spotId = null;
+      document.getElementById('ticket-table').style.display = 'none';
+      renderMap();
+      checkReady();
+      return;
+    }
+    assignSpot(pickSpot(avail, isDisabled, isEv));
+  }
+
+  // 아파트: 층 선택 없이 즉시 빈 자리 배정
+  function autoAssign() {
+    const veh = state.vehicle;
+    // 방문객/미등록은 일반 자리만
+    const isDisabled = (!veh) ? false : veh.is_disabled;
+    const isEv       = (!veh) ? false : veh.is_ev;
+
+    const avail = state.spots.filter(s => !s.is_occupied);
+    if (!avail.length) {
+      setMsg('현재 주차 가능한 자리가 없습니다.');
+      return;
+    }
+    assignSpot(pickSpot(avail, isDisabled, isEv));
+  }
+
+  // 장애인/전기차 여부에 맞는 자리 우선 선택
+  function pickSpot(pool, isDisabled, isEv) {
+    let preferred = 'general';
+    if (isDisabled) preferred = 'disabled';
+    else if (isEv)  preferred = 'ev';
+
+    let candidates = pool.filter(s => s.spot_type === preferred);
+    if (!candidates.length) candidates = pool.filter(s => s.spot_type === 'general');
+    if (!candidates.length) candidates = pool;
+    return candidates[0];
+  }
+
+  function assignSpot(spot) {
+    state.spotId     = spot.spot_id;
+    state.isAutoSpot = true;
+    setMsg('');
+    renderMap();
+    showTicket(spot);
+    document.getElementById('auto-msg').style.display = '';
+    checkReady();
+  }
+
+  // 지도에서 직접 클릭해 자리 선택
+  function selectSpot(spot) {
+    state.spotId     = spot.spot_id;
+    state.isAutoSpot = false;
+    document.getElementById('auto-msg').style.display = 'none';
+    setMsg('');
+    renderMap();
+    showTicket(spot);
+    checkReady();
+  }
+
+  // 주차장 평면도를 동적으로 그림
+  function renderMap() {
+    const map = document.getElementById('spot-map');
+    map.innerHTML = '';
+    if (!state.spots.length) { map.textContent = '자리 정보 없음'; return; }
+
+    const typeIcon = { disabled:'♿', ev:'⚡' };
+    const typeKo   = { general:'일반', disabled:'장애인', ev:'전기차' };
+    const floors = [];
+    state.spots.forEach(s => {
+      if (!floors.includes(s.floor)) floors.push(s.floor);
+    });
+    floors.sort((a, b) => a - b);
+
+    const bg = document.createElement('div');
+    bg.id = 'lot-bg';
+
+    const ent = document.createElement('div');
+    ent.className   = 'map-entry';
+    ent.textContent = '▼  입구 / 출구  ▼';
+    bg.appendChild(ent);
+
+    floors.forEach((f, fi) => {
+      const floorLabel = f < 0 ? `지하 ${Math.abs(f)}층` : `${f}층`;
+
+      const fHeader = document.createElement('div');
+      fHeader.id        = `floor-section-${f}`;
+      fHeader.className = 'floor-header';
+      fHeader.textContent = `[ ${floorLabel} ]`;
+      bg.appendChild(fHeader);
+
+      const floorSpots = state.spots.filter(s => s.floor === f);
+      const zones = [];
+      floorSpots.forEach(s => {
+        if (!zones.includes(s.zone)) zones.push(s.zone);
+      });
+      zones.sort();
+
+      for (let start = 0; start < zones.length; start += ZONES_PER_ROW) {
+        if (start > 0) {
+          const gap = document.createElement('div');
+          gap.className = 'zone-row-gap';
+          bg.appendChild(gap);
+        }
+
+        const floorRow = document.createElement('div');
+        floorRow.className = 'floor-row';
+
+        zones.slice(start, start + ZONES_PER_ROW).forEach((z, zi) => {
+          if (zi > 0) {
+            const road = document.createElement('div');
+            road.className = 'zone-road';
+            road.innerHTML = '<span>통 로</span>';
+            floorRow.appendChild(road);
+          }
+
+          const zoneSpots = floorSpots.filter(s => s.zone === z);
+          const block     = document.createElement('div');
+          block.className = 'zone-block';
+
+          const zLabel = document.createElement('div');
+          zLabel.className   = 'zone-label';
+          zLabel.textContent = `${z} 구역`;
+          block.appendChild(zLabel);
+
+          for (let i = 0; i < zoneSpots.length; i += 10) {
+            const rowEl = document.createElement('div');
+            rowEl.className = 'spot-row';
+
+            zoneSpots.slice(i, i + 10).forEach(s => {
+              const seat       = document.createElement('div');
+              const isSelected = s.spot_id === state.spotId;
+              const icon       = typeIcon[s.spot_type] ?? '';
+
+              if (isSelected)         seat.className = 'seat selected';
+              else if (s.is_occupied) seat.className = 'seat occupied';
+              else                    seat.className = `seat ${s.spot_type}`;
+
+              seat.textContent = icon;
+              seat.title = `#${s.spot_id} · ${z}구역 · ${typeKo[s.spot_type]}${s.is_occupied ? ' (점유중)' : ''}`;
+
+              if (!s.is_occupied) seat.onclick = () => selectSpot(s);
+              rowEl.appendChild(seat);
+            });
+
+            block.appendChild(rowEl);
+          }
+
+          floorRow.appendChild(block);
+        });
+
+        bg.appendChild(floorRow);
+      }
+
+      if (fi < floors.length - 1) {
+        const div = document.createElement('div');
+        div.className = 'floor-divider';
+        bg.appendChild(div);
+      }
+    });
+
+    const legend = document.createElement('div');
+    legend.className = 'map-legend';
+    legend.innerHTML = `
+      <span><span class="leg general"></span> 일반</span>
+      <span><span class="leg disabled"></span> ♿ 장애인</span>
+      <span><span class="leg ev"></span> ⚡ 전기차</span>
+      <span><span class="leg occupied"></span> 점유중</span>
+      <span><span class="leg selected"></span> 선택됨</span>
+    `;
+    bg.appendChild(legend);
+
+    map.appendChild(bg);
+  }
+
+  // 배정된 자리 정보를 티켓 형태로 표시
+  function showTicket(spot) {
+    const lotName    = state.lotId === 1 ? 'A 백화점' : 'B 아파트';
+    const floorLabel = spot.floor < 0 ? `지하${Math.abs(spot.floor)}층` : `${spot.floor}층`;
+    const typeKo     = { general:'일반', disabled:'장애인', ev:'전기차' };
+    const timeLabel  = state.entryTime
+      ? state.entryTime.toLocaleString('ko-KR', { hour12:false }) : '—';
+
+    document.getElementById('tk-lot').textContent       = lotName;
+    document.getElementById('tk-floor').textContent     = floorLabel;
+    document.getElementById('tk-zone').textContent      = `${spot.zone} 구역`;
+    document.getElementById('tk-spot-id').textContent   = `#${spot.spot_id}`;
+    document.getElementById('tk-spot-type').textContent = typeKo[spot.spot_type] ?? spot.spot_type;
+    document.getElementById('tk-plate').textContent     = document.getElementById('plate').value || '—';
+    document.getElementById('tk-time').textContent      = timeLabel;
+    document.getElementById('ticket-table').style.display = '';
+  }
+
+  function checkReady() {
+    const plate    = document.getElementById('plate').value.trim();
+    const hasPlate = plate.length >= 7;
+    let ready      = hasPlate && !!state.spotId;
+    // 아파트 미등록: 세대 선택 필수
+    if (state.lotId === 2 && !state.vehicle && !state.visitUnitId) ready = false;
+    document.getElementById('btn-enter').disabled = !ready;
+  }
+
+  async function submitEnter() {
+    const plate = document.getElementById('plate').value.trim();
+    if (!/^\d{2,3}[가-힣]\d{4}$/.test(plate)) {
+      alert('번호판 형식이 올바르지 않습니다.\n예) 12가3456 / 123나4567');
+      return;
+    }
+
+    const veh        = state.vehicle;
+    const isDisabled = veh ? veh.is_disabled : document.getElementById('cb-disabled').checked;
+    const isEv       = veh ? veh.is_ev       : document.getElementById('cb-ev').checked;
+
+    let userType;
+    if (veh) {
+      userType = veh.user_type;
+    } else if (state.lotId === 2 && state.visitUnitId) {
+      userType = 'visitor';
+    } else {
+      userType = 'general';
+    }
+
+    try {
+      const res  = await fetch(`${API}/park/enter`, {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+          plate_number  : plate,
+          spot_id       : state.spotId,
+          user_type     : userType,
+          is_disabled   : isDisabled,
+          is_ev         : isEv,
+          visit_unit_id : state.visitUnitId || null,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) { setMsg(json.error || '입차 처리 오류'); return; }
+      alert(`입차 완료!\nrecord #${json.data.record_id}  ·  자리 #${state.spotId}`);
+      resetAll();
+    } catch {
+      alert('서버에 연결할 수 없습니다.');
+    }
+  }
+
+  function setMsg(txt) {
+    document.getElementById('msg').textContent = txt;
+  }
+
+  function resetAll() {
+    resetVehicleUI(true);
+    if (state.lotId) loadSpots();
+  }
+
+  // 목업 차량 데이터 (서버 연결 실패 시 fallback)
+  function getMockVehicle(plate) {
+    const db = {
+      '12가3456': { user_type:'employee', is_disabled:false, is_ev:false },
+      '34나5678': { user_type:'employee', is_disabled:false, is_ev:false },
+      '56다7890': { user_type:'employee', is_disabled:false, is_ev:true  },
+      '78라1234': { user_type:'resident', is_disabled:false, is_ev:false },
+      '90마5678': { user_type:'resident', is_disabled:false, is_ev:true  },
+      '11바9012': { user_type:'resident', is_disabled:true,  is_ev:false },
+      '44자1234': { user_type:'general',  is_disabled:true,  is_ev:false },
+      '55차5678': { user_type:'general',  is_disabled:false, is_ev:true  },
+    };
+    return db[plate] ?? null; // null = 미등록
+  }
+
+  function getMockUnits() {
+    return [
+      { unit_id:1, unit_number:'101동 501호' },
+      { unit_id:2, unit_number:'101동 502호' },
+      { unit_id:3, unit_number:'102동 301호' },
+      { unit_id:4, unit_number:'102동 302호' },
+      { unit_id:5, unit_number:'103동 201호' },
+    ];
+  }
+
+  // 목업 주차 자리 데이터
+  // Lot 1 백화점: 지하1,2,3층 × A~L (4구역/층) × 50자리 = 600
+  // Lot 2 아파트: 1층 × P~Y (10구역) × 100자리 = 1000
+  function getMockSpots(lotId) {
+    const spots    = [];
+    let   id       = lotId === 1 ? 1 : 601;
+    const occupied = new Set(lotId === 1 ? [52] : [694]);
+
+    function push(floor, zone, type, n) {
+      for (let i = 0; i < n; i++) {
+        spots.push({ spot_id:id, floor, zone, spot_type:type, is_occupied: occupied.has(id) });
+        id++;
+      }
+    }
+
+    if (lotId === 1) {
+      [
+        { floor:-1, zones:['A','B','C','D'] },
+        { floor:-2, zones:['E','F','G','H'] },
+        { floor:-3, zones:['I','J','K','L'] },
+      ].forEach(({ floor, zones }) =>
+        zones.forEach(z => {
+          push(floor, z, 'general',  42);
+          push(floor, z, 'disabled',  3);
+          push(floor, z, 'ev',         5);
+        })
+      );
+    } else {
+      ['P','Q','R','S','T','U','V','W','X','Y'].forEach(z => {
+        push(-1, z, 'general',  84);
+        push(-1, z, 'disabled',  8);
+        push(-1, z, 'ev',         8);
+      });
+    }
+
+    return spots;
+  }
+
+  updateClock();
+  setInterval(updateClock, 10000);
+</script>
+</body>
+</html>

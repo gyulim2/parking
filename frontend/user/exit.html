@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>주차 출차 · 정산</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    #wrap { max-width: 600px; margin: 40px auto; }
+    table { width: 100%; margin-bottom: 16px; }
+    th { width: 130px; }
+    input[type=text], select { width: 100%; }
+    input[type=button] { margin-right: 6px; }
+    #msg { color: #d32f2f; margin-top: 8px; display: block; }
+    .badge-free {
+      display: inline-block;
+      background: #27ae60; color: #fff;
+      padding: 4px 12px; border-radius: 4px;
+      font-weight: bold; font-size: 0.95em;
+    }
+    .badge-pass {
+      display: inline-block;
+      background: #2980b9; color: #fff;
+      padding: 4px 12px; border-radius: 4px;
+      font-weight: bold; font-size: 0.95em;
+    }
+
+    /* 출차 완료 화면 */
+    #result { display: none; margin-top: 8px; }
+    .complete-banner {
+      text-align: center;
+      background: #eafaf1;
+      border: 2px solid #27ae60;
+      border-radius: 8px;
+      padding: 24px 16px 16px;
+      margin-bottom: 20px;
+    }
+    .complete-banner .check { font-size: 2.4em; }
+    .complete-banner h3 { margin: 8px 0 4px; color: #1e8449; font-size: 1.4em; }
+    .complete-banner .plate-big { font-size: 1.1em; color: #555; margin-bottom: 12px; }
+    .fee-box {
+      display: inline-block;
+      background: #fff;
+      border: 2px solid #2980b9;
+      border-radius: 6px;
+      padding: 10px 32px;
+      font-size: 1.6em;
+      font-weight: bold;
+      color: #154360;
+      margin-top: 4px;
+    }
+    .fee-box.free { border-color: #27ae60; color: #1e8449; }
+    #result table { width: 100%; margin-top: 16px; }
+    #result th { width: 110px; }
+    .detail-toggle {
+      background: none; border: none;
+      color: #2980b9; cursor: pointer;
+      font-size: 0.9em; text-decoration: underline;
+      margin-bottom: 4px; padding: 0;
+    }
+    #detail-rows { display: none; }
+  </style>
+</head>
+<body>
+<div id="wrap">
+
+<div class="nav">
+  <a href="../index.html">← 메인</a> &nbsp;|&nbsp; <a href="enter.html">입차 →</a>
+</div>
+
+<h2>주차 출차 · 정산</h2>
+
+<div id="input-section">
+<table>
+  <tr>
+    <th>차량 번호판</th>
+    <td>
+      <input type="text" id="plate" maxlength="9" placeholder="12가3456"
+             onkeydown="if(event.key==='Enter') lookupRecord()" />
+    </td>
+  </tr>
+  <tr id="record-row" style="display:none">
+    <th>주차 정보</th>
+    <td id="record-info">—</td>
+  </tr>
+  <tr id="method-row" style="display:none">
+    <th>결제 수단</th>
+    <td>
+      <select id="method" onchange="onMethodChange()">
+        <option value="">선택하세요</option>
+        <option value="card">카드</option>
+        <option value="cash">현금</option>
+        <option value="app">앱 결제</option>
+      </select>
+    </td>
+  </tr>
+</table>
+
+<input type="button" value="조회" onclick="lookupRecord()" />
+<input type="button" id="btn-exit" value="출차 · 정산" onclick="submitExit()" disabled />
+<input type="button" value="초기화" onclick="resetAll()" />
+<span id="msg"></span>
+</div>
+
+<!-- 출차 완료 화면 -->
+<div id="result">
+  <div class="complete-banner">
+    <div class="check">✓</div>
+    <h3>출차 완료</h3>
+    <div class="plate-big" id="r-plate">—</div>
+    <div id="r-final-box" class="fee-box">—</div>
+  </div>
+
+  <button class="detail-toggle" onclick="toggleDetail()">상세 내역 보기 ▾</button>
+  <table id="detail-rows">
+    <tr><th>입차 시각</th><td id="r-entry">—</td></tr>
+    <tr><th>출차 시각</th><td id="r-exit">—</td></tr>
+    <tr><th>주차 시간</th><td id="r-minutes">—</td></tr>
+    <tr><th>기본 요금</th><td id="r-raw">—</td></tr>
+    <tr><th>할인 사유</th><td id="r-reason" style="color:#c0392b">—</td></tr>
+    <tr><th>할인율</th><td id="r-discount">—</td></tr>
+  </table>
+  <br />
+  <input type="button" value="처음으로" onclick="resetAll()" />
+</div>
+
+</div>
+<script>
+  const API = '/api';
+  let recordId  = null;
+  let userType  = null;
+
+  const reasonKo = {
+    season_pass  : '정기권',
+    resident_free: '입주민 무료',
+    disabled     : '장애인 할인',
+    none         : '없음',
+  };
+
+  async function lookupRecord() {
+    const plate = document.getElementById('plate').value.trim();
+    if (!plate) { setMsg('번호판을 입력하세요.'); return; }
+
+    setMsg('조회 중...');
+    try {
+      const res  = await fetch(`${API}/records/active?plate_number=${encodeURIComponent(plate)}`);
+      const json = await res.json();
+      if (!json.ok) { setMsg(json.error || '주차 중인 차량이 없습니다.'); clearRecord(); return; }
+      showRecord(json.data);
+    } catch {
+      // mock — resident 테스트용
+      showRecord({ record_id: 99, spot_id: 42, entry_time: '2026-05-24 10:00:00', user_type: 'general' });
+      setMsg('(서버 미연결 — mock 데이터)');
+    }
+  }
+
+  function showRecord(data) {
+    recordId = data.record_id;
+    userType = data.user_type;
+
+    // 주차 정보 행
+    document.getElementById('record-info').innerHTML =
+      `자리 #${data.spot_id} &nbsp;·&nbsp; 입차 ${data.entry_time}`;
+    document.getElementById('record-row').style.display = '';
+
+    if (userType === 'resident') {
+      // 입주민: 결제 수단 숨기고 무료 뱃지 표시
+      document.getElementById('method-row').style.display = 'none';
+      document.getElementById('record-info').innerHTML +=
+        '&nbsp;&nbsp;<span class="badge-free">입주민 무료</span>';
+      document.getElementById('btn-exit').disabled = false;
+
+    } else {
+      // 직원·일반·방문: 결제 수단 선택 (직원은 백엔드가 정기권 자동 확인)
+      document.getElementById('method-row').style.display = '';
+      document.getElementById('method').value = '';
+      document.getElementById('btn-exit').disabled = true;
+      if (userType === 'employee') {
+        document.getElementById('record-info').innerHTML +=
+          '&nbsp;&nbsp;<span class="badge-pass">직원</span>';
+      }
+    }
+
+    setMsg('');
+  }
+
+  function onMethodChange() {
+    const method = document.getElementById('method').value;
+    document.getElementById('btn-exit').disabled = !method;
+  }
+
+  function clearRecord() {
+    recordId = null;
+    userType = null;
+    document.getElementById('record-row').style.display  = 'none';
+    document.getElementById('method-row').style.display  = 'none';
+    document.getElementById('btn-exit').disabled         = true;
+  }
+
+  async function submitExit() {
+    if (!recordId) { setMsg('먼저 번호판을 조회하세요.'); return; }
+
+    let method;
+    if (userType === 'resident') {
+      method = 'resident_free';
+    } else {
+      method = document.getElementById('method').value;
+      if (!method) { setMsg('결제 수단을 선택하세요.'); return; }
+    }
+
+    setMsg('처리 중...');
+    document.getElementById('btn-exit').disabled = true;
+
+    try {
+      const res  = await fetch(`${API}/park/exit`, {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ record_id: recordId, method }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        setMsg(json.error || '출차 처리 오류');
+        document.getElementById('btn-exit').disabled = false;
+        return;
+      }
+      showResult(json.data);
+    } catch {
+      showResult({
+        entry_time     : '2026-05-24 10:00:00',
+        exit_time      : '2026-05-24 12:30:00',
+        parking_minutes: 150,
+        raw_fee        : 15000,
+        discount_rate  : 0.00,
+        discount_reason: 'none',
+        final_fee      : 15000,
+      });
+      setMsg('(서버 미연결 — mock 데이터)');
+    }
+  }
+
+  function showResult(d) {
+    const plate   = document.getElementById('plate').value.trim();
+    const h       = Math.floor(d.parking_minutes / 60);
+    const m       = d.parking_minutes % 60;
+    const timeStr = h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+    const isFree  = d.final_fee === 0;
+
+    // 완료 배너
+    document.getElementById('r-plate').textContent = plate;
+    const feeBox = document.getElementById('r-final-box');
+    feeBox.textContent = isFree ? '무료' : `${d.final_fee.toLocaleString()}원`;
+    feeBox.className   = 'fee-box' + (isFree ? ' free' : '');
+
+    // 상세 내역
+    document.getElementById('r-entry').textContent    = d.entry_time;
+    document.getElementById('r-exit').textContent     = d.exit_time;
+    document.getElementById('r-minutes').textContent  = timeStr;
+    document.getElementById('r-raw').textContent      = `${d.raw_fee.toLocaleString()}원`;
+    document.getElementById('r-reason').textContent   = reasonKo[d.discount_reason] ?? d.discount_reason;
+    document.getElementById('r-discount').textContent = `${Math.round(d.discount_rate * 100)}%`;
+
+    // 입력 폼 숨기고 결과 표시
+    document.getElementById('input-section').style.display = 'none';
+    document.getElementById('result').style.display        = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function toggleDetail() {
+    const rows = document.getElementById('detail-rows');
+    const btn  = document.querySelector('.detail-toggle');
+    if (rows.style.display === 'table') {
+      rows.style.display = 'none';
+      btn.textContent = '상세 내역 보기 ▾';
+    } else {
+      rows.style.display = 'table';
+      btn.textContent = '상세 내역 접기 ▴';
+    }
+  }
+
+  function setMsg(txt) {
+    document.getElementById('msg').textContent = txt;
+  }
+
+  function resetAll() {
+    document.getElementById('plate').value                  = '';
+    document.getElementById('result').style.display         = 'none';
+    document.getElementById('detail-rows').style.display    = 'none';
+    document.querySelector('.detail-toggle').textContent    = '상세 내역 보기 ▾';
+    document.getElementById('input-section').style.display = '';
+    clearRecord();
+    setMsg('');
+  }
+</script>
+</body>
+</html>
