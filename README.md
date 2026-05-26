@@ -56,8 +56,9 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 ### 출차 — 번호판 입력 → 주차 시간 + 요금 자동 계산
 
 ![출차 화면](docs/screenshots/exit.png)
+![정산 화면](docs/screenshots/exit1.png)
 
-### 관리자 대시보드 — 매출 통계, 시간대별 혼잡도, 입출차·결제 이력
+### 관리자 대시보드 — 매출 통계, 시간대별 혼잡도, 입출차 및 결제 이력
 
 ![관리자 대시보드](docs/screenshots/dashboard.png)
 
@@ -73,7 +74,7 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 | `ParkingSpot` | 주차 자리 (층, 구역, 타입, 점유 여부) |
 | `ParkingRecord` | 입출차 기록 |
 | `Payment` | 결제 정보 (원래 요금, 할인율, 최종 요금, 결제 수단) |
-| `Vehicle` | 차량 (번호판, 장애인차·전기차 여부) |
+| `Vehicle` | 차량 (번호판, 장애인차 또는 전기차 여부) |
 | `AptUnit` | 아파트 세대 |
 | `AptResident` | 입주민 ↔ 차량 연결 |
 | `AptMonthlyPayment` | 관리비 납부 이력 |
@@ -100,7 +101,6 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 2. 할인 사유 결정 (정기권 직원 → 입주민 → 장애인 → 일반)
 3. `Payment` 삽입
 
-![프로시저 코드](docs/screenshots/procedure.png)
 
 ### 트리거 (7개)
 
@@ -110,7 +110,7 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 | `trg_spot_released_on_exit` | AFTER UPDATE ParkingRecord | 출차 시 자리 해제 |
 | `trg_no_double_entry` | BEFORE INSERT ParkingRecord | 같은 차량 이중 입차 차단 |
 | `trg_block_unpaid_resident` | BEFORE INSERT ParkingRecord | 관리비 미납 입주민 입차 차단 |
-| `trg_payment_consistency` | BEFORE INSERT Payment | 할인율·최종금액 일관성 검증 |
+| `trg_payment_consistency` | BEFORE INSERT Payment | 할인율 및 최종금액 일관성 검증 |
 | `trg_season_pass_expire_insert` | BEFORE INSERT SeasonPass | 만료일 지난 정기권 비활성 처리 |
 | `trg_season_pass_expire_update` | BEFORE UPDATE SeasonPass | 정기권 기간 변경 시 활성 상태 재계산 |
 
@@ -130,50 +130,24 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 
 | 인덱스 | 대상 | 용도 |
 |--------|------|------|
-| `idx_record_plate` | ParkingRecord.plate_number | 번호판으로 기록 조회 |
-| `idx_record_exit` | ParkingRecord.exit_time | 날짜별 매출 집계 |
-| `idx_record_entry` | ParkingRecord.entry_time | 혼잡도 시간대 집계 |
-| `idx_payment_record` | Payment.record_id | 결제-기록 조인 |
-| `idx_spot_lot_type` | ParkingSpot(lot_id, spot_type, is_occupied) | 빈 자리 검색 |
-| `idx_resident_plate` | AptResident.plate_number | 입주민 차량 확인 |
-| `idx_employee_plate` | DeptEmployee.plate_number | 직원 차량 확인 |
-| `idx_monthly_unpaid` | AptMonthlyPayment(unit_id, is_paid, billing_month) | 미납 확인 |
+| `idx_pr_plate` | ParkingRecord.plate_number | 번호판으로 입출차 이력 조회 |
+| `idx_pr_entry_time` | ParkingRecord.entry_time | 시간대별 혼잡도 집계 |
+| `idx_pr_exit_null` | ParkingRecord.exit_time | 현재 주차 중인 차량 조회 |
+| `idx_ps_lot_occupied` | ParkingSpot(lot_id, spot_type, is_occupied) | 빈 자리 검색 |
+| `idx_ps_lot_floor_zone` | ParkingSpot(lot_id, floor, zone) | 평면도 렌더링 |
+| `idx_sp_employee_active` | SeasonPass(employee_id, is_active) | 직원 정기권 확인 |
+| `idx_amp_unit_paid` | AptMonthlyPayment(unit_id, is_paid) | 관리비 미납 확인 |
+| `idx_pay_method` | Payment.method | 결제 수단별 집계 |
 
 ![인덱스 목록](docs/screenshots/indexes.png)
 
 ---
 
-## 백엔드 구조
 
-```
-backend/
-├── app.py              Flask 진입점, 정적 파일 서빙
-├── config.py           DB 연결 (role별 계정 분리)
-├── auth.py             @admin_required 데코레이터
-├── utils.py            공통 응답 헬퍼 (ok / err)
-├── requirements.txt
-├── .env.example        환경 변수 템플릿
-├── controllers/        API 라우팅
-│   ├── parking_controller.py   입차/출차/자리 조회
-│   └── stats_controller.py     매출/혼잡도/이력 (관리자 전용)
-├── services/           비즈니스 로직
-│   ├── parking_service.py
-│   └── stats_service.py
-├── dao/                DB 쿼리
-│   ├── parking_spot_dao.py
-│   ├── parking_record_dao.py
-│   ├── payment_dao.py
-│   ├── user_dao.py
-│   ├── resident_dao.py
-│   └── season_pass_dao.py
-└── dto/                데이터 구조 정의
-    ├── parking_dto.py
-    └── payment_dto.py
-```
 
 DB 계정은 두 개로 분리되어 있습니다.  
 `parking_user` — 입차/출차 등 일반 사용자 요청 (SELECT, EXECUTE만 가능)  
-`parking_admin` — 관리자 통계·이력 조회 (전체 권한)
+`parking_admin` — 관리자가 통계 및 이력 조회 (전체 권한)
 
 ---
 
