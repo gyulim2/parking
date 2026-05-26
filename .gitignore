@@ -1,0 +1,14 @@
+# 환경 변수 (절대 커밋 금지)
+backend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,30 @@
+import os
+import pymysql
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def get_connection(role: str = "user"):
+    # admin이면 parking_admin, 기본은 parking_user (SELECT + EXECUTE만 가능)
+    if role == "admin":
+        user     = os.getenv("DB_ADMIN_USER", "parking_admin")
+        password = os.getenv("DB_ADMIN_PASSWORD", "")
+    else:
+        user     = os.getenv("DB_USER", "parking_user")
+        password = os.getenv("DB_PASSWORD", "")
+
+    unix_socket = os.getenv("DB_SOCKET", "")
+    kwargs = dict(
+        user=user,
+        password=password,
+        database=os.getenv("DB_NAME", "parking_db"),
+        charset="utf8mb4",
+        cursorclass=pymysql.cursors.DictCursor,
+    )
+    if unix_socket:
+        kwargs["unix_socket"] = unix_socket
+    else:
+        kwargs["host"] = os.getenv("DB_HOST", "localhost")
+        kwargs["port"] = int(os.getenv("DB_PORT", 3306))
+    return pymysql.connect(**kwargs)

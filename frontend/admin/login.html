@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>관리자 로그인 — 이경규의 파킹랏</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    body { margin: 100px auto; width: 320px; text-align: center; }
+    h2 { margin-bottom: 32px; }
+    table { width: 100%; margin-bottom: 16px; }
+    td { border: none; padding: 6px 4px; text-align: left; }
+    td:first-child { width: 70px; color: #555; }
+    input[type=text], input[type=password] { width: 100%; }
+    button { width: 100%; padding: 10px; font-size: 1rem; }
+    #msg { margin-top: 12px; color: #d32f2f; font-size: 0.9rem; min-height: 20px; }
+  </style>
+</head>
+<body>
+
+<div class="nav" style="text-align:left"><a href="../index.html">← 메인</a></div>
+<h2>관리자 로그인</h2>
+
+<table>
+  <tr>
+    <td>아이디</td>
+    <td><input type="text" id="username" placeholder="admin" /></td>
+  </tr>
+  <tr>
+    <td>비밀번호</td>
+    <td><input type="password" id="password" placeholder="비밀번호 입력" /></td>
+  </tr>
+</table>
+
+<button onclick="login()">로그인</button>
+<div id="msg"></div>
+
+<script>
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') login();
+  });
+
+  async function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    if (!username || !password) {
+      document.getElementById('msg').textContent = '아이디와 비밀번호를 입력하세요.';
+      return;
+    }
+    try {
+      const res  = await fetch('/api/admin/login', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({ username, password }),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        location.href = 'dashboard.html';
+      } else {
+        document.getElementById('msg').textContent = json.error;
+      }
+    } catch {
+      document.getElementById('msg').textContent = '서버에 연결할 수 없습니다.';
+    }
+  }
+</script>
+
+</body>
+</html>
