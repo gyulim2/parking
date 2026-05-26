@@ -46,7 +46,8 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 
 ### 메인
 
-![메인 화면](docs/screenshots/main.png)
+<img width="1549" height="942" alt="스크린샷 2026-05-26 173814" src="https://github.com/user-attachments/assets/948ddc4c-3ae4-4695-afd2-cc0d890abd34" />
+
 
 ### 입차 — 주차장 선택 후 평면도에서 자리 확인 및 입차
 
