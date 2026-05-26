@@ -6,10 +6,7 @@ load_dotenv()
 
 
 def get_connection(role: str = "user"):
-    """
-    role='admin' → parking_admin 계정 (전체 권한)
-    role='user'  → parking_user  계정 (SELECT + EXECUTE)
-    """
+    # admin이면 parking_admin, 기본은 parking_user (SELECT + EXECUTE만 가능)
     if role == "admin":
         user     = os.getenv("DB_ADMIN_USER", "parking_admin")
         password = os.getenv("DB_ADMIN_PASSWORD", "")

@@ -267,9 +267,13 @@
   function toggleDetail() {
     const rows = document.getElementById('detail-rows');
     const btn  = document.querySelector('.detail-toggle');
-    const open = rows.style.display === '';
-    rows.style.display = open ? 'none' : 'table';
-    btn.textContent    = open ? '상세 내역 보기 ▾' : '상세 내역 접기 ▴';
+    if (rows.style.display === 'table') {
+      rows.style.display = 'none';
+      btn.textContent = '상세 내역 보기 ▾';
+    } else {
+      rows.style.display = 'table';
+      btn.textContent = '상세 내역 접기 ▴';
+    }
   }
 
   function setMsg(txt) {

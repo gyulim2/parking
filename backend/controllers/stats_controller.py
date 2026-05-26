@@ -1,21 +1,12 @@
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, session
 
 from auth import admin_required
 from dao import user_dao
 from services import stats_service
+from utils import ok, err
 
 bp = Blueprint("admin", __name__, url_prefix="/api")
 
-
-def ok(data):
-    return jsonify({"ok": True, "data": data})
-
-
-def err(msg, status=400):
-    return jsonify({"ok": False, "error": msg}), status
-
-
-# ── 인증 ──────────────────────────────────────────────────────────────────────
 
 @bp.route("/admin/login", methods=["POST"])
 def login():
@@ -48,8 +39,6 @@ def logout():
 def me():
     return ok({"admin_id": session["admin_id"], "username": session["username"]})
 
-
-# ── 통계 ──────────────────────────────────────────────────────────────────────
 
 @bp.route("/stats/revenue/today")
 @admin_required
@@ -93,8 +82,6 @@ def revenue_by_reason():
     lot_id = request.args.get("lot_id", type=int)
     return ok(stats_service.get_revenue_by_reason(lot_id))
 
-
-# ── 정산 이력 ─────────────────────────────────────────────────────────────────
 
 @bp.route("/records")
 @admin_required

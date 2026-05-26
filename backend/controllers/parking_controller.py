@@ -1,22 +1,13 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 import pymysql
 
 from dto.parking_dto import ParkEnterRequest, ParkExitRequest
 from dao import resident_dao, parking_spot_dao
 from services import parking_service
+from utils import ok, err
 
 bp = Blueprint("parking", __name__, url_prefix="/api")
 
-
-def ok(data):
-    return jsonify({"ok": True, "data": data})
-
-
-def err(msg, status=400):
-    return jsonify({"ok": False, "error": msg}), status
-
-
-# ── GET /api/spots?lot_id=1 ───────────────────────────────────────────────────
 
 @bp.route("/spots")
 def get_spots():
@@ -29,8 +20,6 @@ def get_spots():
     return ok(spots)
 
 
-# ── GET /api/vehicle?plate=12가3456 ──────────────────────────────────────────
-
 @bp.route("/vehicle")
 def get_vehicle():
     plate = request.args.get("plate", "").strip()
@@ -40,8 +29,6 @@ def get_vehicle():
     return ok(info)
 
 
-# ── GET /api/units?lot_id=2 ───────────────────────────────────────────────────
-
 @bp.route("/units")
 def get_units():
     lot_id = request.args.get("lot_id", type=int)
@@ -50,8 +37,6 @@ def get_units():
     units = resident_dao.find_units_by_lot(lot_id)
     return ok(units)
 
-
-# ── POST /api/park/enter ──────────────────────────────────────────────────────
 
 @bp.route("/park/enter", methods=["POST"])
 def enter():
@@ -88,8 +73,6 @@ def enter():
         return err(e.args[1], 400)
 
 
-# ── POST /api/park/exit ───────────────────────────────────────────────────────
-
 @bp.route("/park/exit", methods=["POST"])
 def exit_and_pay():
     data      = request.get_json(silent=True) or {}
@@ -109,8 +92,6 @@ def exit_and_pay():
     except pymysql.err.OperationalError as e:
         return err(e.args[1], 400)
 
-
-# ── GET /api/records/active?plate_number=12가3456 ────────────────────────────
 
 @bp.route("/records/active")
 def get_active():

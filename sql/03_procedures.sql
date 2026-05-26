@@ -6,25 +6,25 @@ DROP PROCEDURE IF EXISTS sp_park_exit;
 DELIMITER $$
 
 -- 입차 처리
--- p_plate_number  : 차량 번호판
--- p_spot_id       : 주차할 자리
--- p_visit_unit_id : 방문 세대 (visitor일 때만, 나머지는 NULL)
--- p_user_type     : employee / resident / visitor / general
 CREATE PROCEDURE sp_park_enter(
-    IN  p_plate_number  VARCHAR(20),
-    IN  p_spot_id       INT,
-    IN  p_visit_unit_id INT,
+    IN  p_plate_number  VARCHAR(20),  -- 차량 번호판
+    IN  p_spot_id       INT,          -- 주차할 자리
+    IN  p_visit_unit_id INT,          -- 방문 세대 id (visitor 아니면 NULL)
     IN  p_user_type     ENUM('employee', 'resident', 'visitor', 'general')
 )
 BEGIN
     DECLARE v_is_occupied  BOOLEAN;
+    DECLARE v_spot_type    VARCHAR(10);
+    DECLARE v_is_disabled  BOOLEAN;
+    DECLARE v_is_ev        BOOLEAN;
     DECLARE v_unit_id      INT;
     DECLARE v_unpaid_count INT;
     DECLARE v_this_month   DATE;
 
     START TRANSACTION;
 
-    SELECT is_occupied INTO v_is_occupied
+    -- 자리 상태랑 타입 같이 가져옴
+    SELECT is_occupied, spot_type INTO v_is_occupied, v_spot_type
       FROM ParkingSpot
      WHERE spot_id = p_spot_id;
 
@@ -33,7 +33,22 @@ BEGIN
             SET MESSAGE_TEXT = '이미 사용 중인 주차 공간입니다.';
     END IF;
 
-    -- 입주민이면 관리비 미납 확인 (트리거와 이중 방어)
+    -- 장애인/전기차 전용 자리인지 확인
+    SELECT is_disabled, is_ev INTO v_is_disabled, v_is_ev
+      FROM Vehicle
+     WHERE plate_number = p_plate_number;
+
+    IF v_spot_type = 'disabled' AND v_is_disabled = FALSE THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '장애인 전용 자리입니다.';
+    END IF;
+
+    IF v_spot_type = 'ev' AND v_is_ev = FALSE THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '전기차 전용 자리입니다.';
+    END IF;
+
+    -- 입주민이면 관리비 미납 확인 (입차 시점 기준으로 전월까지 미납이 있으면 입차 거부)
     IF p_user_type = 'resident' THEN
         SELECT ar.unit_id INTO v_unit_id
           FROM AptResident ar
@@ -60,19 +75,16 @@ BEGIN
     COMMIT;
 END$$
 
--- 출차 및 정산 처리
--- p_record_id : 출차할 입출차 기록 번호
--- p_method    : 결제 수단
+-- 출차 + 요금 정산
 CREATE PROCEDURE sp_park_exit(
-    IN p_record_id INT,
-    IN p_method    ENUM('season_pass', 'resident_free', 'card', 'cash', 'app')
+    IN p_record_id INT,  -- 출차할 입출차 기록 번호
+    IN p_method    ENUM('season_pass', 'resident_free', 'card', 'cash', 'app')  -- 결제 수단
 )
 BEGIN
     DECLARE v_plate       VARCHAR(20);
     DECLARE v_user_type   VARCHAR(20);
     DECLARE v_entry_time  DATETIME;
     DECLARE v_exit_time   DATETIME;
-    DECLARE v_minutes     INT;
     DECLARE v_units       INT;
     DECLARE v_raw_fee     INT;
     DECLARE v_rate        DECIMAL(3,2);
@@ -98,7 +110,7 @@ BEGIN
     SET v_units   = GREATEST(CEIL(TIMESTAMPDIFF(SECOND, v_entry_time, v_exit_time) / 1800.0), 1);
     SET v_raw_fee = v_units * 3000;
 
-    -- 할인 사유 결정 (우선순위: season_pass > resident_free > disabled > none)
+    -- 할인 사유 결정 (정기권 있는 직원 > 입주민 무료 > 장애인 50% > 일반)
     IF v_user_type = 'employee' THEN
         SELECT COUNT(*) INTO v_pass_active
           FROM SeasonPass sp

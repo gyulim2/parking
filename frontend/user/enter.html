@@ -201,7 +201,7 @@
 
   let lookupTimer = null;
 
-  // ── 시계 ──────────────────────────────────────
+  // 현재 시각을 입차 시간란에 표시
   function updateClock() {
     const now = new Date();
     state.entryTime = now;
@@ -213,7 +213,7 @@
     if (state.spotId) document.getElementById('tk-time').textContent = s;
   }
 
-  // ── 주차장 선택 ───────────────────────────────
+  // 주차장(백화점/아파트) 선택 시 UI 초기화
   function onLotChange() {
     const val = document.querySelector('input[name="lot"]:checked');
     if (!val) return;
@@ -233,7 +233,7 @@
     if (state.lotId === 2) loadUnits();
   }
 
-  // ── 번호판 입력 ───────────────────────────────
+  // 번호판 7자 이상 입력되면 600ms 후 차량 조회
   document.getElementById('plate').addEventListener('input', function () {
     clearTimeout(lookupTimer);
     const plate = this.value.trim();
@@ -241,7 +241,6 @@
     lookupTimer = setTimeout(() => lookupVehicle(plate), 600);
   });
 
-  // ── 차량 조회 ─────────────────────────────────
   async function lookupVehicle(plate) {
     document.getElementById('user-type-display').textContent = '조회 중...';
     try {
@@ -316,13 +315,13 @@
     renderMap();
   }
 
-  // ── 미등록 차량 속성 변경 (백화점) ───────────
+  // 장애인/전기차 체크박스 변경 → 자리 재배정
   function onAttrChange() {
     // 층이 선택돼 있으면 해당 층에서 재배정
     if (state.floor !== null) autoAssignFromFloor(state.floor);
   }
 
-  // ── 방문 세대 선택 (아파트 방문객) ────────────
+  // 방문 세대 선택 시 자동 배정
   function onUnitChange() {
     const sel = document.getElementById('visit-unit-select');
     state.visitUnitId = sel.value ? Number(sel.value) : null;
@@ -335,7 +334,6 @@
     checkReady();
   }
 
-  // ── 자리 목록 로드 ────────────────────────────
   async function loadSpots() {
     try {
       const res  = await fetch(`${API}/spots?lot_id=${state.lotId}`);
@@ -348,7 +346,7 @@
     renderMap();
   }
 
-  // ── 호수 목록 로드 (아파트) ───────────────────
+  // 아파트 세대 목록을 드롭다운에 채움
   async function loadUnits() {
     try {
       const res  = await fetch(`${API}/units?lot_id=2`);
@@ -367,7 +365,7 @@
     });
   }
 
-  // ── 층 버튼 (백화점) ──────────────────────────
+  // 백화점 층 버튼 생성
   function buildFloorButtons() {
     const floors = [];
     state.spots.forEach(s => {
@@ -394,7 +392,7 @@
     });
   }
 
-  // ── 층에서 자동 배정 (백화점) ─────────────────
+  // 선택한 층에서 빈 자리를 찾아 자동 배정
   function autoAssignFromFloor(floor) {
     state.floor = floor;
     const veh        = state.vehicle;
@@ -413,7 +411,7 @@
     assignSpot(pickSpot(avail, isDisabled, isEv));
   }
 
-  // ── 즉시 자동 배정 (아파트) ───────────────────
+  // 아파트: 층 선택 없이 즉시 빈 자리 배정
   function autoAssign() {
     const veh = state.vehicle;
     // 방문객/미등록은 일반 자리만
@@ -428,7 +426,7 @@
     assignSpot(pickSpot(avail, isDisabled, isEv));
   }
 
-  // ── 차량 속성에 맞는 자리 선택 ───────────────
+  // 장애인/전기차 여부에 맞는 자리 우선 선택
   function pickSpot(pool, isDisabled, isEv) {
     let preferred = 'general';
     if (isDisabled) preferred = 'disabled';
@@ -440,7 +438,6 @@
     return candidates[0];
   }
 
-  // ── 자리 배정 공통 처리 ───────────────────────
   function assignSpot(spot) {
     state.spotId     = spot.spot_id;
     state.isAutoSpot = true;
@@ -451,7 +448,7 @@
     checkReady();
   }
 
-  // ── 수동 선택 ─────────────────────────────────
+  // 지도에서 직접 클릭해 자리 선택
   function selectSpot(spot) {
     state.spotId     = spot.spot_id;
     state.isAutoSpot = false;
@@ -462,7 +459,7 @@
     checkReady();
   }
 
-  // ── 주차장 평면도 렌더링 ──────────────────────
+  // 주차장 평면도를 동적으로 그림
   function renderMap() {
     const map = document.getElementById('spot-map');
     map.innerHTML = '';
@@ -577,7 +574,7 @@
     map.appendChild(bg);
   }
 
-  // ── 티켓 ──────────────────────────────────────
+  // 배정된 자리 정보를 티켓 형태로 표시
   function showTicket(spot) {
     const lotName    = state.lotId === 1 ? 'A 백화점' : 'B 아파트';
     const floorLabel = spot.floor < 0 ? `지하${Math.abs(spot.floor)}층` : `${spot.floor}층`;
@@ -604,7 +601,6 @@
     document.getElementById('btn-enter').disabled = !ready;
   }
 
-  // ── 입차 요청 ─────────────────────────────────
   async function submitEnter() {
     const plate = document.getElementById('plate').value.trim();
     if (!/^\d{2,3}[가-힣]\d{4}$/.test(plate)) {
@@ -656,7 +652,7 @@
     if (state.lotId) loadSpots();
   }
 
-  // ── 목업: 차량 ────────────────────────────────
+  // 목업 차량 데이터 (서버 연결 실패 시 fallback)
   function getMockVehicle(plate) {
     const db = {
       '12가3456': { user_type:'employee', is_disabled:false, is_ev:false },
@@ -671,7 +667,6 @@
     return db[plate] ?? null; // null = 미등록
   }
 
-  // ── 목업: 호수 ────────────────────────────────
   function getMockUnits() {
     return [
       { unit_id:1, unit_number:'101동 501호' },
@@ -682,7 +677,7 @@
     ];
   }
 
-  // ── 목업: 주차 자리 ───────────────────────────
+  // 목업 주차 자리 데이터
   // Lot 1 백화점: 지하1,2,3층 × A~L (4구역/층) × 50자리 = 600
   // Lot 2 아파트: 1층 × P~Y (10구역) × 100자리 = 1000
   function getMockSpots(lotId) {
