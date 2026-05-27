@@ -28,11 +28,3 @@ class ParkingRecordDTO:
     visit_unit_id: Optional[int]      = None
 
 
-@dataclass
-class ParkingSpotDTO:
-    spot_id:    int
-    lot_id:     int
-    floor:      int
-    zone:       str
-    spot_type:  str
-    is_occupied: bool

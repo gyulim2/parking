@@ -66,13 +66,17 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 
 ## DB 설계
 
+### ERD
+
+![ERD](docs/screenshots/erd.png)
+
 ### 테이블 구조
 
 | 테이블 | 설명 |
 |--------|------|
 | `ParkingLot` | 주차장 정보 |
 | `ParkingSpot` | 주차 자리 (층, 구역, 타입, 점유 여부) |
-| `ParkingRecord` | 입출차 기록 |
+| `ParkingRecord` | 입출차 기록 (방문객은 `visit_unit_id`로 방문 세대 연결) |
 | `Payment` | 결제 정보 (원래 요금, 할인율, 최종 요금, 결제 수단) |
 | `Vehicle` | 차량 (번호판, 장애인차 또는 전기차 여부) |
 | `AptUnit` | 아파트 세대 |
@@ -81,7 +85,6 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 | `DeptEmployee` | 직원 ↔ 차량 연결 |
 | `SeasonPass` | 직원 정기권 |
 | `AppUser` | 관리자 계정 (비밀번호는 MySQL SHA2-256 해싱) |
-| `Visitor` | 방문객 사전 등록 |
 
 ### 저장 프로시저
 
@@ -217,11 +220,11 @@ python app.py
 - 관리자 계정 : `admin` / `admin1234`
 
 **A 백화점 주차장 (Lot 1)**
-- 지하 1~3층, A~L구역, 구역당 50자리 (일반 42 + 장애인 3 + 전기차 5)
+- 지하 1-3층, A-L구역, 구역당 50자리 (일반 42 + 장애인 3 + 전기차 5)
 - 총 600자리
 
 **B 아파트 주차장 (Lot 2)**
-- 지하 1층, P~Y구역, 구역당 100자리 (일반 84 + 장애인 8 + 전기차 8)
+- 지하 1층, P-Y구역, 구역당 100자리 (일반 84 + 장애인 8 + 전기차 8)
 - 총 1,000자리
 
 
