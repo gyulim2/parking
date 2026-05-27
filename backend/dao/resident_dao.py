@@ -2,39 +2,6 @@ from __future__ import annotations
 from config import get_connection
 
 
-def find_by_plate(plate_number: str) -> dict | None:
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT ar.resident_id, ar.plate_number, ar.unit_id, au.unit_number, au.lot_id "
-                "FROM AptResident ar "
-                "JOIN AptUnit au ON au.unit_id = ar.unit_id "
-                "WHERE ar.plate_number = %s",
-                (plate_number,),
-            )
-            row = cur.fetchone()
-    finally:
-        conn.close()
-    return row
-
-
-def find_employee_by_plate(plate_number: str) -> dict | None:
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT employee_id, plate_number, lot_id "
-                "FROM DeptEmployee "
-                "WHERE plate_number = %s",
-                (plate_number,),
-            )
-            row = cur.fetchone()
-    finally:
-        conn.close()
-    return row
-
-
 def find_vehicle_info(plate_number: str) -> dict | None:
     conn = get_connection()
     try:
