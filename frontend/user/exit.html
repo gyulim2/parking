@@ -82,6 +82,10 @@
     <th>주차 정보</th>
     <td id="record-info">—</td>
   </tr>
+  <tr id="vehicle-row" style="display:none">
+    <th>이용자 유형</th>
+    <td id="vehicle-info">—</td>
+  </tr>
   <tr id="method-row" style="display:none">
     <th>결제 수단</th>
     <td>
@@ -160,15 +164,20 @@
       `자리 #${data.spot_id} &nbsp;·&nbsp; 입차 ${data.entry_time}`;
     document.getElementById('record-row').style.display = '';
 
+    // 이용자 유형 + 차량 특성 행
+    const userTypeKo = { resident:'입주민', employee:'직원', visitor:'방문객', general:'일반' };
+    const vehicleType = data.is_disabled ? '장애인 차량' : data.is_ev ? '전기차' : '일반 차량';
+    document.getElementById('vehicle-info').textContent =
+      `${userTypeKo[userType] ?? userType} · ${vehicleType}`;
+    document.getElementById('vehicle-row').style.display = '';
+
     if (userType === 'resident') {
-      // 입주민: 결제 수단 숨기고 무료 뱃지 표시
       document.getElementById('method-row').style.display = 'none';
       document.getElementById('record-info').innerHTML +=
         '&nbsp;&nbsp;<span class="badge-free">입주민 무료</span>';
       document.getElementById('btn-exit').disabled = false;
 
     } else {
-      // 직원·일반·방문: 결제 수단 선택 (직원은 백엔드가 정기권 자동 확인)
       document.getElementById('method-row').style.display = '';
       document.getElementById('method').value = '';
       document.getElementById('btn-exit').disabled = true;
@@ -190,6 +199,7 @@
     recordId = null;
     userType = null;
     document.getElementById('record-row').style.display  = 'none';
+    document.getElementById('vehicle-row').style.display = 'none';
     document.getElementById('method-row').style.display  = 'none';
     document.getElementById('btn-exit').disabled         = true;
   }
