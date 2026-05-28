@@ -82,9 +82,13 @@
     <th>주차 정보</th>
     <td id="record-info">—</td>
   </tr>
-  <tr id="vehicle-row" style="display:none">
+  <tr id="user-type-row" style="display:none">
     <th>이용자 유형</th>
-    <td id="vehicle-info">—</td>
+    <td id="user-type-display">—</td>
+  </tr>
+  <tr id="vehicle-attr-row" style="display:none">
+    <th>차량 특성</th>
+    <td id="vehicle-attr-display">—</td>
   </tr>
   <tr id="method-row" style="display:none">
     <th>결제 수단</th>
@@ -146,16 +150,22 @@
 
     setMsg('조회 중...');
     try {
-      const res  = await fetch(`${API}/records/active?plate_number=${encodeURIComponent(plate)}`);
-      const json = await res.json();
-      if (!json.ok) { setMsg(json.error || '주차 중인 차량이 없습니다.'); clearRecord(); return; }
-      showRecord(json.data);
+      const [recRes, vehRes] = await Promise.all([
+        fetch(`${API}/records/active?plate_number=${encodeURIComponent(plate)}`),
+        fetch(`${API}/vehicle?plate=${encodeURIComponent(plate)}`),
+      ]);
+      const recJson = await recRes.json();
+      const vehJson = await vehRes.json();
+
+      if (!recJson.ok) { setMsg(recJson.error || '주차 중인 차량이 없습니다.'); clearRecord(); return; }
+      const vehicle = vehJson.ok !== undefined ? vehJson.data : vehJson;
+      showRecord(recJson.data, vehicle);
     } catch {
       setMsg('서버에 연결할 수 없습니다.');
     }
   }
 
-  function showRecord(data) {
+  function showRecord(data, vehicle) {
     recordId = data.record_id;
     userType = data.user_type;
 
@@ -164,19 +174,23 @@
       `자리 #${data.spot_id} &nbsp;·&nbsp; 입차 ${data.entry_time}`;
     document.getElementById('record-row').style.display = '';
 
-    // 이용자 유형 + 차량 특성 행
-    const userTypeKo = { resident:'입주민', employee:'직원', visitor:'방문객', general:'일반' };
-    const vehicleType = data.is_disabled ? '장애인 차량' : data.is_ev ? '전기차' : '일반 차량';
-    document.getElementById('vehicle-info').textContent =
-      `${userTypeKo[userType] ?? userType} · ${vehicleType}`;
-    document.getElementById('vehicle-row').style.display = '';
+    // 이용자 유형
+    const typeKo = { employee:'직원', resident:'입주민', general:'일반', visitor:'방문객' };
+    document.getElementById('user-type-display').textContent = typeKo[userType] ?? userType;
+    document.getElementById('user-type-row').style.display = '';
+
+    // 차량 특성
+    const attrs = [];
+    if (vehicle?.is_disabled) attrs.push('♿ 장애인');
+    if (vehicle?.is_ev)       attrs.push('⚡ 전기차');
+    document.getElementById('vehicle-attr-display').textContent = attrs.length ? attrs.join(' · ') : '일반 차량';
+    document.getElementById('vehicle-attr-row').style.display = '';
 
     if (userType === 'resident') {
       document.getElementById('method-row').style.display = 'none';
       document.getElementById('record-info').innerHTML +=
         '&nbsp;&nbsp;<span class="badge-free">입주민 무료</span>';
       document.getElementById('btn-exit').disabled = false;
-
     } else {
       document.getElementById('method-row').style.display = '';
       document.getElementById('method').value = '';
@@ -198,10 +212,11 @@
   function clearRecord() {
     recordId = null;
     userType = null;
-    document.getElementById('record-row').style.display  = 'none';
-    document.getElementById('vehicle-row').style.display = 'none';
-    document.getElementById('method-row').style.display  = 'none';
-    document.getElementById('btn-exit').disabled         = true;
+    document.getElementById('record-row').style.display      = 'none';
+    document.getElementById('user-type-row').style.display   = 'none';
+    document.getElementById('vehicle-attr-row').style.display = 'none';
+    document.getElementById('method-row').style.display      = 'none';
+    document.getElementById('btn-exit').disabled             = true;
   }
 
   async function submitExit() {
