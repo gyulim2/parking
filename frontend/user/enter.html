@@ -129,14 +129,6 @@
       </div>
     </td>
   </tr>
-  <tr id="visitor-row" style="display:none">
-    <td>방문 세대</td>
-    <td>
-      <select id="visit-unit-select" onchange="onUnitChange()">
-        <option value="">세대 선택 (선택하면 방문객으로 입차)</option>
-      </select>
-    </td>
-  </tr>
   <tr>
     <td>입차 시간</td>
     <td><span id="entry-time">—</span></td>
@@ -194,8 +186,6 @@
     isAutoSpot : false,
     spots      : [],
     vehicle    : null,       // null = 미등록
-    units      : [],
-    visitUnitId: null,
     entryTime  : null,
   };
 
@@ -220,7 +210,6 @@
 
     state.lotId      = Number(val.value);
     state.floor      = null;
-    state.visitUnitId = null;
 
     document.getElementById('selected-lot-name').textContent =
       state.lotId === 1 ? 'A 백화점 주차장' : 'B 아파트 주차장';
@@ -230,7 +219,6 @@
 
     resetVehicleUI();
     loadSpots();
-    if (state.lotId === 2) loadUnits();
   }
 
   // 번호판 7자 이상 입력되면 600ms 후 차량 조회
@@ -246,10 +234,11 @@
     try {
       const res  = await fetch(`${API}/vehicle?plate=${encodeURIComponent(plate)}`);
       const json = await res.json();
-      // 실제 API: { ok: true, data: {...} | null }
       state.vehicle = (json.ok !== undefined) ? json.data : json;
     } catch {
-      state.vehicle = getMockVehicle(plate);
+      setMsg('서버에 연결할 수 없습니다.');
+      document.getElementById('user-type-display').textContent = '';
+      return;
     }
     updateVehicleUI();
   }
@@ -276,17 +265,10 @@
       }
     } else {
       // 미등록
-      const unregLabel = state.lotId === 2 ? '방문객 (세대를 선택하세요)' : '미등록 (일반)';
-      document.getElementById('user-type-display').textContent = unregLabel;
+      document.getElementById('user-type-display').textContent = '미등록 (일반)';
       document.getElementById('vehicle-tags').textContent = '';
-      // 백화점: 자가신고 체크박스 / 아파트: 방문 세대 드롭다운
-      document.getElementById('manual-attrs').style.display =
-        state.lotId === 1 ? '' : 'none';
+      document.getElementById('manual-attrs').style.display = '';
     }
-
-    // 방문 세대: 아파트 + 미등록만
-    document.getElementById('visitor-row').style.display =
-      (state.lotId === 2 && !veh) ? '' : 'none';
 
     checkReady();
   }
@@ -296,7 +278,6 @@
     state.vehicle    = null;
     state.spotId     = null;
     state.isAutoSpot = false;
-    state.visitUnitId = null;
     state.floor      = null;
 
     if (clearPlate) document.getElementById('plate').value = '';
@@ -304,9 +285,7 @@
     document.getElementById('vehicle-tags').textContent      = '—';
     document.getElementById('cb-disabled').checked           = false;
     document.getElementById('cb-ev').checked                 = false;
-    document.getElementById('visit-unit-select').value       = '';
     document.getElementById('manual-attrs').style.display    = 'none';
-    document.getElementById('visitor-row').style.display     = 'none';
     document.getElementById('ticket-table').style.display    = 'none';
     document.getElementById('auto-msg').style.display        = 'none';
     document.getElementById('btn-enter').disabled            = true;
@@ -321,48 +300,17 @@
     if (state.floor !== null) autoAssignFromFloor(state.floor);
   }
 
-  // 방문 세대 선택 시 자동 배정
-  function onUnitChange() {
-    const sel = document.getElementById('visit-unit-select');
-    state.visitUnitId = sel.value ? Number(sel.value) : null;
-    if (state.visitUnitId) {
-      autoAssign();
-    } else {
-      state.spotId = null;
-      document.getElementById('ticket-table').style.display = 'none';
-    }
-    checkReady();
-  }
-
   async function loadSpots() {
     try {
       const res  = await fetch(`${API}/spots?lot_id=${state.lotId}`);
       const json = await res.json();
       state.spots = (json.ok !== undefined) ? json.data : json;
     } catch {
-      state.spots = getMockSpots(state.lotId);
+      setMsg('서버에 연결할 수 없습니다.');
+      return;
     }
     buildFloorButtons();
     renderMap();
-  }
-
-  // 아파트 세대 목록을 드롭다운에 채움
-  async function loadUnits() {
-    try {
-      const res  = await fetch(`${API}/units?lot_id=2`);
-      const json = await res.json();
-      state.units = (json.ok !== undefined) ? json.data : json;
-    } catch {
-      state.units = getMockUnits();
-    }
-    const sel = document.getElementById('visit-unit-select');
-    sel.innerHTML = '<option value="">세대 선택 (선택하면 방문객으로 입차)</option>';
-    state.units.forEach(u => {
-      const opt = document.createElement('option');
-      opt.value = u.unit_id;
-      opt.textContent = u.unit_number;
-      sel.appendChild(opt);
-    });
   }
 
   // 백화점 층 버튼 생성
@@ -595,9 +543,7 @@
   function checkReady() {
     const plate    = document.getElementById('plate').value.trim();
     const hasPlate = plate.length >= 7;
-    let ready      = hasPlate && !!state.spotId;
-    // 아파트 미등록: 세대 선택 필수
-    if (state.lotId === 2 && !state.vehicle && !state.visitUnitId) ready = false;
+    const ready = hasPlate && !!state.spotId;
     document.getElementById('btn-enter').disabled = !ready;
   }
 
@@ -612,14 +558,7 @@
     const isDisabled = veh ? veh.is_disabled : document.getElementById('cb-disabled').checked;
     const isEv       = veh ? veh.is_ev       : document.getElementById('cb-ev').checked;
 
-    let userType;
-    if (veh) {
-      userType = veh.user_type;
-    } else if (state.lotId === 2 && state.visitUnitId) {
-      userType = 'visitor';
-    } else {
-      userType = 'general';
-    }
+    const userType = veh ? veh.user_type : 'general';
 
     try {
       const res  = await fetch(`${API}/park/enter`, {
@@ -631,7 +570,7 @@
           user_type     : userType,
           is_disabled   : isDisabled,
           is_ev         : isEv,
-          visit_unit_id : state.visitUnitId || null,
+          visit_unit_id : null,
         }),
       });
       const json = await res.json();
@@ -650,69 +589,6 @@
   function resetAll() {
     resetVehicleUI(true);
     if (state.lotId) loadSpots();
-  }
-
-  // 목업 차량 데이터 (서버 연결 실패 시 fallback)
-  function getMockVehicle(plate) {
-    const db = {
-      '12가3456': { user_type:'employee', is_disabled:false, is_ev:false },
-      '34나5678': { user_type:'employee', is_disabled:false, is_ev:false },
-      '56다7890': { user_type:'employee', is_disabled:false, is_ev:true  },
-      '78라1234': { user_type:'resident', is_disabled:false, is_ev:false },
-      '90마5678': { user_type:'resident', is_disabled:false, is_ev:true  },
-      '11바9012': { user_type:'resident', is_disabled:true,  is_ev:false },
-      '44자1234': { user_type:'general',  is_disabled:true,  is_ev:false },
-      '55차5678': { user_type:'general',  is_disabled:false, is_ev:true  },
-    };
-    return db[plate] ?? null; // null = 미등록
-  }
-
-  function getMockUnits() {
-    return [
-      { unit_id:1, unit_number:'101동 501호' },
-      { unit_id:2, unit_number:'101동 502호' },
-      { unit_id:3, unit_number:'102동 301호' },
-      { unit_id:4, unit_number:'102동 302호' },
-      { unit_id:5, unit_number:'103동 201호' },
-    ];
-  }
-
-  // 목업 주차 자리 데이터
-  // Lot 1 백화점: 지하1,2,3층 × A~L (4구역/층) × 50자리 = 600
-  // Lot 2 아파트: 1층 × P~Y (10구역) × 100자리 = 1000
-  function getMockSpots(lotId) {
-    const spots    = [];
-    let   id       = lotId === 1 ? 1 : 601;
-    const occupied = new Set(lotId === 1 ? [52] : [694]);
-
-    function push(floor, zone, type, n) {
-      for (let i = 0; i < n; i++) {
-        spots.push({ spot_id:id, floor, zone, spot_type:type, is_occupied: occupied.has(id) });
-        id++;
-      }
-    }
-
-    if (lotId === 1) {
-      [
-        { floor:-1, zones:['A','B','C','D'] },
-        { floor:-2, zones:['E','F','G','H'] },
-        { floor:-3, zones:['I','J','K','L'] },
-      ].forEach(({ floor, zones }) =>
-        zones.forEach(z => {
-          push(floor, z, 'general',  42);
-          push(floor, z, 'disabled',  3);
-          push(floor, z, 'ev',         5);
-        })
-      );
-    } else {
-      ['P','Q','R','S','T','U','V','W','X','Y'].forEach(z => {
-        push(-1, z, 'general',  84);
-        push(-1, z, 'disabled',  8);
-        push(-1, z, 'ev',         8);
-      });
-    }
-
-    return spots;
   }
 
   updateClock();

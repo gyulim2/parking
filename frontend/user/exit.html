@@ -147,9 +147,7 @@
       if (!json.ok) { setMsg(json.error || '주차 중인 차량이 없습니다.'); clearRecord(); return; }
       showRecord(json.data);
     } catch {
-      // mock — resident 테스트용
-      showRecord({ record_id: 99, spot_id: 42, entry_time: '2026-05-24 10:00:00', user_type: 'general' });
-      setMsg('(서버 미연결 — mock 데이터)');
+      setMsg('서버에 연결할 수 없습니다.');
     }
   }
 
@@ -224,16 +222,8 @@
       }
       showResult(json.data);
     } catch {
-      showResult({
-        entry_time     : '2026-05-24 10:00:00',
-        exit_time      : '2026-05-24 12:30:00',
-        parking_minutes: 150,
-        raw_fee        : 15000,
-        discount_rate  : 0.00,
-        discount_reason: 'none',
-        final_fee      : 15000,
-      });
-      setMsg('(서버 미연결 — mock 데이터)');
+      setMsg('서버에 연결할 수 없습니다.');
+      document.getElementById('btn-exit').disabled = false;
     }
   }
 
