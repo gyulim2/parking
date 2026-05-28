@@ -103,9 +103,12 @@ def get_active():
     if record is None:
         return err("현재 주차 중인 차량이 아닙니다.", 404)
 
+    veh = resident_dao.find_vehicle_info(plate)
     return ok({
-        "record_id":  record.record_id,
-        "spot_id":    record.spot_id,
-        "user_type":  record.user_type,
-        "entry_time": record.entry_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "record_id":   record.record_id,
+        "spot_id":     record.spot_id,
+        "user_type":   record.user_type,
+        "entry_time":  record.entry_time.strftime("%Y-%m-%d %H:%M:%S"),
+        "is_disabled": veh["is_disabled"] if veh else False,
+        "is_ev":       veh["is_ev"] if veh else False,
     })
