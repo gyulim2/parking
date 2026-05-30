@@ -581,7 +581,8 @@
     const isDisabled = document.getElementById('cb-disabled').checked;
     const isEv       = document.getElementById('cb-ev').checked;
 
-    const userType = veh ? veh.user_type : 'general';
+    const rawType  = veh ? veh.user_type : 'general';
+    const userType = (state.lotId === 1 && rawType === 'resident') ? 'general' : rawType;
 
     try {
       const res  = await fetch(`${API}/park/enter`, {
