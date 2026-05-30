@@ -23,6 +23,9 @@ def upsert_vehicle(plate_number: str, is_disabled: bool, is_ev: bool) -> None:
 
 
 def enter(req: ParkEnterRequest) -> None:
+    active = parking_record_dao.find_active_by_plate(req.plate_number)
+    if active is not None:
+        raise ValueError(f"이미 입차된 차량입니다. (plate={req.plate_number})")
     parking_record_dao.call_enter(
         plate_number=req.plate_number,
         spot_id=req.spot_id,
