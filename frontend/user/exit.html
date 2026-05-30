@@ -82,6 +82,14 @@
     <th>주차 정보</th>
     <td id="record-info">—</td>
   </tr>
+  <tr id="user-type-row" style="display:none">
+    <th>이용자 유형</th>
+    <td id="user-type-display">—</td>
+  </tr>
+  <tr id="vehicle-attr-row" style="display:none">
+    <th>차량 특성</th>
+    <td id="vehicle-attr-display">—</td>
+  </tr>
   <tr id="method-row" style="display:none">
     <th>결제 수단</th>
     <td>
@@ -142,18 +150,22 @@
 
     setMsg('조회 중...');
     try {
-      const res  = await fetch(`${API}/records/active?plate_number=${encodeURIComponent(plate)}`);
-      const json = await res.json();
-      if (!json.ok) { setMsg(json.error || '주차 중인 차량이 없습니다.'); clearRecord(); return; }
-      showRecord(json.data);
+      const [recRes, vehRes] = await Promise.all([
+        fetch(`${API}/records/active?plate_number=${encodeURIComponent(plate)}`),
+        fetch(`${API}/vehicle?plate=${encodeURIComponent(plate)}`),
+      ]);
+      const recJson = await recRes.json();
+      const vehJson = await vehRes.json();
+
+      if (!recJson.ok) { setMsg(recJson.error || '주차 중인 차량이 없습니다.'); clearRecord(); return; }
+      const vehicle = vehJson.ok !== undefined ? vehJson.data : vehJson;
+      showRecord(recJson.data, vehicle);
     } catch {
-      // mock — resident 테스트용
-      showRecord({ record_id: 99, spot_id: 42, entry_time: '2026-05-24 10:00:00', user_type: 'general' });
-      setMsg('(서버 미연결 — mock 데이터)');
+      setMsg('서버에 연결할 수 없습니다.');
     }
   }
 
-  function showRecord(data) {
+  function showRecord(data, vehicle) {
     recordId = data.record_id;
     userType = data.user_type;
 
@@ -162,15 +174,24 @@
       `자리 #${data.spot_id} &nbsp;·&nbsp; 입차 ${data.entry_time}`;
     document.getElementById('record-row').style.display = '';
 
+    // 이용자 유형
+    const typeKo = { employee:'직원', resident:'입주민', general:'일반', visitor:'방문객' };
+    document.getElementById('user-type-display').textContent = typeKo[userType] ?? userType;
+    document.getElementById('user-type-row').style.display = '';
+
+    // 차량 특성
+    const attrs = [];
+    if (vehicle?.is_disabled) attrs.push('♿ 장애인');
+    if (vehicle?.is_ev)       attrs.push('⚡ 전기차');
+    document.getElementById('vehicle-attr-display').textContent = attrs.length ? attrs.join(' · ') : '일반 차량';
+    document.getElementById('vehicle-attr-row').style.display = '';
+
     if (userType === 'resident') {
-      // 입주민: 결제 수단 숨기고 무료 뱃지 표시
       document.getElementById('method-row').style.display = 'none';
       document.getElementById('record-info').innerHTML +=
         '&nbsp;&nbsp;<span class="badge-free">입주민 무료</span>';
       document.getElementById('btn-exit').disabled = false;
-
     } else {
-      // 직원·일반·방문: 결제 수단 선택 (직원은 백엔드가 정기권 자동 확인)
       document.getElementById('method-row').style.display = '';
       document.getElementById('method').value = '';
       document.getElementById('btn-exit').disabled = true;
@@ -191,9 +212,11 @@
   function clearRecord() {
     recordId = null;
     userType = null;
-    document.getElementById('record-row').style.display  = 'none';
-    document.getElementById('method-row').style.display  = 'none';
-    document.getElementById('btn-exit').disabled         = true;
+    document.getElementById('record-row').style.display      = 'none';
+    document.getElementById('user-type-row').style.display   = 'none';
+    document.getElementById('vehicle-attr-row').style.display = 'none';
+    document.getElementById('method-row').style.display      = 'none';
+    document.getElementById('btn-exit').disabled             = true;
   }
 
   async function submitExit() {
@@ -224,16 +247,8 @@
       }
       showResult(json.data);
     } catch {
-      showResult({
-        entry_time     : '2026-05-24 10:00:00',
-        exit_time      : '2026-05-24 12:30:00',
-        parking_minutes: 150,
-        raw_fee        : 15000,
-        discount_rate  : 0.00,
-        discount_reason: 'none',
-        final_fee      : 15000,
-      });
-      setMsg('(서버 미연결 — mock 데이터)');
+      setMsg('서버에 연결할 수 없습니다.');
+      document.getElementById('btn-exit').disabled = false;
     }
   }
 
