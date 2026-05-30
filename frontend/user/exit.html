@@ -270,7 +270,10 @@
     document.getElementById('r-exit').textContent     = d.exit_time;
     document.getElementById('r-minutes').textContent  = timeStr;
     document.getElementById('r-raw').textContent      = `${d.raw_fee.toLocaleString()}원`;
-    document.getElementById('r-reason').textContent   = reasonKo[d.discount_reason] ?? d.discount_reason;
+    const reasonText = (userType === 'employee' && d.discount_reason !== 'season_pass')
+      ? '정기권 만료 (일반 요금 적용)'
+      : (reasonKo[d.discount_reason] ?? d.discount_reason);
+    document.getElementById('r-reason').textContent = reasonText;
     document.getElementById('r-discount').textContent = `${Math.round(d.discount_rate * 100)}%`;
 
     // 입력 폼 숨기고 결과 표시
