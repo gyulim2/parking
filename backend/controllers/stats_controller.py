@@ -83,6 +83,13 @@ def revenue_by_reason():
     return ok(stats_service.get_revenue_by_reason(lot_id))
 
 
+@bp.route("/stats/revenue/by-method")
+@admin_required
+def revenue_by_method():
+    lot_id = request.args.get("lot_id", type=int)
+    return ok(stats_service.get_revenue_by_method(lot_id))
+
+
 @bp.route("/records")
 @admin_required
 def records():

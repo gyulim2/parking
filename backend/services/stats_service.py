@@ -139,6 +139,42 @@ def get_revenue_by_reason(lot_id=None) -> list[dict]:
     ]
 
 
+def get_revenue_by_method(lot_id=None) -> list[dict]:
+    cond, params = _lot_condition(lot_id)
+    sql = f"""
+        WITH method_stats AS (
+            SELECT p.method,
+                   COUNT(*) AS cnt,
+                   COALESCE(SUM(p.final_fee), 0) AS total
+            FROM Payment p
+            JOIN ParkingRecord pr ON pr.record_id = p.record_id
+            JOIN ParkingSpot   ps ON ps.spot_id   = pr.spot_id
+            WHERE 1=1 {cond}
+            GROUP BY p.method
+        )
+        SELECT method, cnt, total,
+               ROUND(total / SUM(total) OVER () * 100, 1) AS share_pct
+        FROM method_stats
+        ORDER BY total DESC
+    """
+    conn = get_connection(role="admin")
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+    return [
+        {
+            "method":    r["method"],
+            "cnt":       int(r["cnt"]),
+            "total":     int(r["total"]),
+            "share_pct": float(r["share_pct"] or 0),
+        }
+        for r in rows
+    ]
+
+
 def get_records(lot_id=None, status=None) -> list[dict]:
     # 현재 주차 중인 차량은 v_current_parked 뷰 사용
     if status == "active":
