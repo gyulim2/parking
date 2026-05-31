@@ -8,11 +8,11 @@ DROP USER IF EXISTS 'parking_admin'@'localhost';
 DROP USER IF EXISTS 'parking_user'@'localhost';
 
 -- 관리자 계정: 모든 권한 (통계 조회, 데이터 수정 등)
-CREATE USER 'parking_admin'@'localhost' IDENTIFIED BY 'admin1234';
+CREATE USER 'parking_admin'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('admin1234');
 GRANT ALL PRIVILEGES ON parking_db.* TO 'parking_admin'@'localhost';
 
 -- 일반 계정: SELECT만 가능 (입차/출차 등 프로시저 실행은 EXECUTE 권한 추가)
-CREATE USER 'parking_user'@'localhost' IDENTIFIED BY 'user1234';
+CREATE USER 'parking_user'@'localhost' IDENTIFIED VIA mysql_native_password USING PASSWORD('user1234');
 GRANT SELECT ON parking_db.* TO 'parking_user'@'localhost';
 GRANT EXECUTE ON parking_db.* TO 'parking_user'@'localhost';
 
