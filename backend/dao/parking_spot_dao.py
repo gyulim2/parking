@@ -3,7 +3,6 @@ from config import get_connection
 
 
 def find_all_by_lot(lot_id: int) -> list[dict]:
-    """프론트 평면도 렌더링용 — 특정 주차장의 전체 자리 반환"""
     conn = get_connection()
     try:
         with conn.cursor() as cur:
