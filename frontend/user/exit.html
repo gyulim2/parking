@@ -128,7 +128,7 @@
     <tr><th>할인율</th><td id="r-discount">—</td></tr>
   </table>
   <br />
-  <input type="button" value="처음으로" onclick="resetAll()" />
+  <input type="button" value="처음으로" onclick="location.href='../index.html#user'" />
 </div>
 
 </div>
@@ -157,7 +157,12 @@
       const recJson = await recRes.json();
       const vehJson = await vehRes.json();
 
-      if (!recJson.ok) { setMsg(recJson.error || '주차 중인 차량이 없습니다.'); clearRecord(); return; }
+      if (!recJson.ok) {
+        const errMsg = recJson.error || '주차 중인 차량이 없습니다.';
+        setMsg(`${errMsg} &nbsp;<a href="enter.html" style="color:#2563eb">입차 페이지로 이동 →</a>`, true);
+        clearRecord();
+        return;
+      }
       const vehicle = vehJson.ok !== undefined ? vehJson.data : vehJson;
       showRecord(recJson.data, vehicle);
     } catch {
@@ -294,8 +299,10 @@
     }
   }
 
-  function setMsg(txt) {
-    document.getElementById('msg').textContent = txt;
+  function setMsg(txt, html = false) {
+    const el = document.getElementById('msg');
+    if (html) el.innerHTML = txt;
+    else      el.textContent = txt;
   }
 
   function resetAll() {
