@@ -115,6 +115,7 @@ CREATE TABLE AptMonthlyPayment (
     is_paid            BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT pk_apt_monthly_payment PRIMARY KEY (monthly_payment_id),
     CONSTRAINT uq_amp_unit_month      UNIQUE (unit_id, billing_month),
+    CONSTRAINT chk_billing_day        CHECK (DAY(billing_month) = 1),
     CONSTRAINT fk_amp_unit            FOREIGN KEY (unit_id)
         REFERENCES AptUnit (unit_id)
         ON DELETE CASCADE

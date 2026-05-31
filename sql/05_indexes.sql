@@ -1,10 +1,10 @@
 USE parking_db;
 
--- 차량 번호로 입출차 이력 찾을 때
-CREATE INDEX idx_pr_plate ON ParkingRecord (plate_number);
+-- 이중입차 트리거·번호판 조회 공용: WHERE plate_number = ? AND exit_time IS NULL
+CREATE INDEX idx_pr_plate_exit ON ParkingRecord (plate_number, exit_time);
 -- 날짜/시간대별 혼잡도 집계용
 CREATE INDEX idx_pr_entry_time ON ParkingRecord (entry_time);
--- 현재 주차 중인 차량 조회 (exit_time IS NULL)
+-- v_current_parked 뷰: exit_time IS NULL 전체 스캔
 CREATE INDEX idx_pr_exit_null ON ParkingRecord (exit_time);
 
 -- 빈 자리 조회: lot_id + spot_type + is_occupied 묶어서
