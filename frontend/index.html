@@ -5,11 +5,19 @@
   <title>이경규의 파킹랏</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    body { margin: 80px auto; width: 400px; text-align: center; }
+    body { margin: 80px auto; width: 380px; text-align: center; }
     h1 { font-size: 1.8rem; margin-bottom: 8px; }
     p  { color: #555; margin-bottom: 40px; }
     .btn-group { display: flex; gap: 16px; justify-content: center; }
     button { width: 140px; padding: 14px 0; font-size: 1rem; }
+    .back-btn {
+      margin-top: 20px;
+      background: none; border: none;
+      color: #888; cursor: pointer;
+      font-size: 0.85rem; padding: 4px 8px;
+      text-decoration: underline;
+    }
+    .back-btn:hover { color: #333; background: none; }
     hr { margin: 40px 0 16px; }
   </style>
 </head>
@@ -19,11 +27,34 @@
 <p>백화점 · 아파트 통합 주차 관리 시스템</p>
 <hr>
 
-<div class="btn-group">
-  <button onclick="location.href='user/enter.html'">사용자</button>
-  <button onclick="location.href='admin/login.html'">오너</button>
+<div id="step-main" class="btn-group">
+  <button onclick="showUser()">사용자</button>
+  <button onclick="location.href='admin/login.html'">관리자</button>
+</div>
+
+<div id="step-user" style="display:none">
+  <div class="btn-group">
+    <button onclick="location.href='user/enter.html'">입차</button>
+    <button onclick="location.href='user/exit.html'">출차</button>
+  </div>
+  <br>
+  <button class="back-btn" onclick="showMain()">← 뒤로</button>
 </div>
 
 <hr>
+
+<script>
+  function showUser() {
+    document.getElementById('step-main').style.display = 'none';
+    document.getElementById('step-user').style.display = 'block';
+  }
+  function showMain() {
+    document.getElementById('step-user').style.display = 'none';
+    document.getElementById('step-main').style.display = 'flex';
+    history.replaceState(null, '', location.pathname);
+  }
+  // 입차/출차 완료 후 #user 해시로 리다이렉트되면 사용자 메뉴 바로 표시
+  if (location.hash === '#user') showUser();
+</script>
 </body>
 </html>

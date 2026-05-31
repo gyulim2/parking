@@ -196,7 +196,6 @@
     return true; // general: 누구나 가능
   }
 
-  // 현재 시각을 입차 시간란에 표시
   function updateClock() {
     const now = new Date();
     state.entryTime = now;
@@ -208,7 +207,6 @@
     if (state.spotId) document.getElementById('tk-time').textContent = s;
   }
 
-  // 주차장(백화점/아파트) 선택 시 UI 초기화
   function onLotChange() {
     const val = document.querySelector('input[name="lot"]:checked');
     if (!val) return;
@@ -320,7 +318,6 @@
     renderMap();
   }
 
-  // 백화점 층 버튼 생성
   function buildFloorButtons() {
     const floors = [];
     state.spots.forEach(s => {
@@ -365,7 +362,6 @@
     assignSpot(pickSpot(avail, isDisabled, isEv));
   }
 
-  // 아파트: 층 선택 없이 즉시 빈 자리 배정
   function autoAssign() {
     const isDisabled = document.getElementById('cb-disabled').checked;
     const isEv       = document.getElementById('cb-ev').checked;
@@ -412,7 +408,6 @@
     checkReady();
   }
 
-  // 지도에서 직접 클릭해 자리 선택
   function selectSpot(spot) {
     state.spotId     = spot.spot_id;
     state.isAutoSpot = false;
@@ -423,7 +418,6 @@
     checkReady();
   }
 
-  // 주차장 평면도를 동적으로 그림
   function renderMap() {
     const map = document.getElementById('spot-map');
     map.innerHTML = '';
@@ -545,7 +539,6 @@
     map.appendChild(bg);
   }
 
-  // 배정된 자리 정보를 티켓 형태로 표시
   function showTicket(spot) {
     const lotName    = state.lotId === 1 ? 'A 백화점' : 'B 아파트';
     const floorLabel = spot.floor < 0 ? `지하${Math.abs(spot.floor)}층` : `${spot.floor}층`;
@@ -599,8 +592,12 @@
       });
       const json = await res.json();
       if (!json.ok) { setMsg(json.error || '입차 처리 오류'); return; }
-      alert(`입차 완료!\nrecord #${json.data.record_id}  ·  자리 #${state.spotId}`);
-      resetAll();
+
+      const msgEl = document.getElementById('msg');
+      msgEl.style.color = '#27ae60';
+      msgEl.textContent = `입차 완료! 자리 #${state.spotId}로 배정되었습니다.`;
+      document.getElementById('btn-enter').disabled = true;
+      setTimeout(() => { window.location.href = '../index.html#user'; }, 1500);
     } catch {
       alert('서버에 연결할 수 없습니다.');
     }

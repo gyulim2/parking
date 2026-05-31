@@ -299,7 +299,7 @@ INSERT INTO SeasonPass (employee_id, start_date, end_date, is_active, monthly_fe
 INSERT INTO AptUnit (unit_id, lot_id, unit_number, monthly_fee) VALUES
     (1, 2, '101동 501호', 50000),
     (2, 2, '102동 301호', 50000),
-    (3, 2, '103동 201호', 50000);   -- 5월 미납!
+    (3, 2, '103동 201호', 50000);   -- 5월 관리비 미납 세대 (5월 중 입차는 가능, 6월부터 차단)
 
 -- ============================================================
 -- 7. AptResident
@@ -318,24 +318,13 @@ INSERT INTO AptMonthlyPayment (unit_id, billing_month, is_paid) VALUES
     (2, '2026-04-01', TRUE),
     (2, '2026-05-01', TRUE),
     (3, '2026-04-01', TRUE),
-    (3, '2026-05-01', FALSE);   -- ★ 미납
+    (3, '2026-05-01', FALSE);   -- 미납: 당월이라 5월 입차는 허용, 6월 입차 시도하면 차단됨
 
 -- ============================================================
 -- 9. ParkingRecord  (입출차 기록 10개)
---
---    spot_id 대응표 (1600자리 기준):
---      Lot 1 백화점 spot 1~600
---        spot   1 = Zone A general   ← record 1 (직원1)
---        spot   2 = Zone A general   ← record 2 (직원2)
---        spot  46 = Zone A ev        ← record 3 (직원3, 전기차)  [A: general1~42, disabled43~45, ev46~50]
---        spot  51 = Zone B general   ← record 7 (일반방문객)
---        spot  52 = Zone B general   ← record 9 (현재주차중)     [B: general51~92, disabled93~95, ev96~100]
---        spot  93 = Zone B disabled  ← record 8 (장애인방문객)
---      Lot 2 아파트 spot 601~1600
---        spot 601 = Zone P general   ← record 4 (입주민1)        [P: general601~684, disabled685~692, ev693~700]
---        spot 685 = Zone P disabled  ← record 6 (입주민3, 장애인)
---        spot 693 = Zone P ev        ← record 5 (입주민2, 전기차)
---        spot 694 = Zone P ev        ← record 10 (현재주차중)
+--    백화점 Zone A: general 1~42, disabled 43~45, ev 46~50
+--    백화점 Zone B: general 51~92, disabled 93~95, ev 96~100
+--    아파트 Zone P: general 601~684, disabled 685~692, ev 693~700
 -- ============================================================
 INSERT INTO ParkingRecord
     (record_id, plate_number, spot_id, visit_unit_id, user_type, entry_time, exit_time)

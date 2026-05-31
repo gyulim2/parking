@@ -130,4 +130,32 @@ BEGIN
     END IF;
 END$$
 
+-- 관리자가 Payment를 직접 수정할 때도 동일하게 검증
+CREATE TRIGGER trg_payment_consistency_update
+BEFORE UPDATE ON Payment
+FOR EACH ROW
+BEGIN
+    DECLARE v_expected_rate DECIMAL(3,2);
+    DECLARE v_expected_fee  INT;
+
+    IF NEW.discount_reason = 'none' THEN
+        SET v_expected_rate = 0.00;
+    ELSEIF NEW.discount_reason = 'disabled' THEN
+        SET v_expected_rate = 0.50;
+    ELSE
+        SET v_expected_rate = 1.00;
+    END IF;
+
+    IF NEW.discount_rate <> v_expected_rate THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'discount_reason 과 discount_rate 가 일치하지 않습니다.';
+    END IF;
+
+    SET v_expected_fee = CEIL(NEW.raw_fee * (1 - NEW.discount_rate));
+    IF NEW.final_fee <> v_expected_fee THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'final_fee 가 계산식과 일치하지 않습니다.';
+    END IF;
+END$$
+
 DELIMITER ;

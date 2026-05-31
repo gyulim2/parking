@@ -63,7 +63,6 @@ def enter():
         )
         parking_service.enter(req)
 
-        # 방금 생성된 record_id 조회
         record = parking_service.find_active_record(plate_number)
         return ok({"record_id": record.record_id if record else None})
 
@@ -71,6 +70,8 @@ def enter():
         return err(str(e))
     except pymysql.err.OperationalError as e:
         return err(e.args[1], 400)
+    except Exception as e:
+        return err(str(e), 500)
 
 
 @bp.route("/park/exit", methods=["POST"])
@@ -91,6 +92,8 @@ def exit_and_pay():
         return err(str(e))
     except pymysql.err.OperationalError as e:
         return err(e.args[1], 400)
+    except Exception as e:
+        return err(str(e), 500)
 
 
 @bp.route("/records/active")

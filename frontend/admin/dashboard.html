@@ -178,9 +178,9 @@
   window.addEventListener('DOMContentLoaded', async () => {
     try {
       const res = await fetch(`${API}/admin/me`);
-      if (res.status === 401) { location.href = 'login.html'; return; }
+      if (!res.ok) { location.href = 'login.html'; return; }
     } catch {
-      // 서버 미연결 → mock 모드
+      // 서버 미연결 시 mock 데이터로 동작
     }
     loadAll();
   });
@@ -218,7 +218,6 @@
     }
   }
 
-  // A 백화점 vs B 아파트 수익 비교
   async function loadCompare() {
     const tbl = document.getElementById('compare-table');
     try {

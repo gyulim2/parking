@@ -92,7 +92,6 @@ def get_revenue_compare() -> list[dict]:
 
 
 def get_congestion(lot_id: int) -> list[dict]:
-    """v_hourly_congestion 뷰에서 lot_id별 시간대 집계"""
     sql = """
         SELECT entry_hour AS hour, SUM(entry_count) AS entry_count
         FROM v_hourly_congestion
@@ -143,7 +142,7 @@ def get_revenue_by_reason(lot_id=None) -> list[dict]:
 def get_records(lot_id=None, status=None) -> list[dict]:
     # 현재 주차 중인 차량은 v_current_parked 뷰 사용
     if status == "active":
-        # 뷰 컬럼은 별칭 없이 lot_id 직접 참조 (ps.lot_id 쓰면 오류)
+        # v_current_parked는 테이블 별칭 없이 컬럼명으로 참조
         cond   = "AND lot_id = %s" if lot_id is not None else ""
         params = (lot_id,)         if lot_id is not None else ()
         sql = f"""
