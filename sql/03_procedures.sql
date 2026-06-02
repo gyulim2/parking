@@ -30,12 +30,13 @@ BEGIN
 
     START TRANSACTION;
 
-    -- 자리 점유 여부와 주차장 타입을 한 번에 조회
+    -- 자리 점유 여부와 주차장 타입을 한 번에 조회 (동시 입차 방지를 위해 행 잠금)
     SELECT ps.is_occupied, ps.spot_type, pl.lot_type
       INTO v_is_occupied, v_spot_type, v_lot_type
       FROM ParkingSpot ps
       JOIN ParkingLot  pl ON pl.lot_id = ps.lot_id
-     WHERE ps.spot_id = p_spot_id;
+     WHERE ps.spot_id = p_spot_id
+       FOR UPDATE;
 
     IF v_is_occupied THEN
         SIGNAL SQLSTATE '45000'
