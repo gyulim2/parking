@@ -4,7 +4,7 @@ from config import get_connection
 
 def find_by_credentials(user_id: str, plain_password: str) -> dict | None:
     # 비밀번호 해싱은 MySQL에서 처리 (SHA2)
-    conn = get_connection(role="user")
+    conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(
