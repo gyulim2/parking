@@ -143,13 +143,13 @@ CREATE TABLE ParkingSpot (
   COLLATE = utf8mb4_unicode_ci;
 
 
--- exit_time NULL = 아직 주차 중 / visit_unit_id = visitor일 때만 사용
+-- exit_time NULL = 아직 주차 중
 CREATE TABLE ParkingRecord (
     record_id     INT         NOT NULL AUTO_INCREMENT,
     plate_number  VARCHAR(20) NOT NULL,
     spot_id       INT         NOT NULL,
     visit_unit_id INT         NULL,
-    user_type     ENUM('employee', 'resident', 'visitor', 'general') NOT NULL,
+    user_type     ENUM('employee', 'resident', 'general') NOT NULL,
     entry_time    DATETIME    NOT NULL,
     exit_time     DATETIME    NULL,
     CONSTRAINT pk_parking_record PRIMARY KEY (record_id),

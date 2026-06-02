@@ -10,7 +10,7 @@ CREATE PROCEDURE sp_park_enter(
     IN  p_plate_number  VARCHAR(20),
     IN  p_spot_id       INT,
     IN  p_visit_unit_id INT,
-    IN  p_user_type     ENUM('employee', 'resident', 'visitor', 'general')
+    IN  p_user_type     ENUM('employee', 'resident', 'general')
 )
 BEGIN
     DECLARE v_is_occupied  BOOLEAN;

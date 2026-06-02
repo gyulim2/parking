@@ -3,11 +3,11 @@ from config import get_connection
 from dto.parking_dto import ParkingRecordDTO
 
 
-def call_enter(plate_number: str, spot_id: int, visit_unit_id, user_type: str) -> None:
+def call_enter(plate_number: str, spot_id: int, user_type: str) -> None:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.callproc("sp_park_enter", [plate_number, spot_id, visit_unit_id, user_type])
+            cur.callproc("sp_park_enter", [plate_number, spot_id, None, user_type])
         conn.commit()
     finally:
         conn.close()

@@ -25,7 +25,6 @@ def enter(req: ParkEnterRequest) -> None:
     parking_record_dao.call_enter(
         plate_number=req.plate_number,
         spot_id=req.spot_id,
-        visit_unit_id=req.visit_unit_id,
         user_type=req.user_type,
     )
 

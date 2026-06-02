@@ -29,16 +29,3 @@ def find_vehicle_info(plate_number: str) -> dict | None:
         "is_disabled":  bool(vehicle["is_disabled"]),
         "is_ev":        bool(vehicle["is_ev"]),
     }
-
-
-def find_units_by_lot(lot_id: int) -> list[dict]:
-    conn = get_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT unit_id, unit_number FROM AptUnit WHERE lot_id = %s ORDER BY unit_number",
-                (lot_id,),
-            )
-            return cur.fetchall()
-    finally:
-        conn.close()

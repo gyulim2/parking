@@ -445,7 +445,7 @@ INSERT INTO ParkingRecord
     (record_id, plate_number, spot_id, visit_unit_id, user_type, entry_time, exit_time)
 VALUES
     (9,  '33아7890',  52, NULL, 'general', '2026-05-13 09:00:00', NULL),
-    (10, '55차5678', 694,    1, 'visitor', '2026-05-13 10:30:00', NULL);
+    (10, '55차5678', 694, NULL, 'general', '2026-05-13 10:30:00', NULL);
 
 -- ============================================================
 -- Payment (정산 62건)

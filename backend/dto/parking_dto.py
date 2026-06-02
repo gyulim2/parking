@@ -5,10 +5,9 @@ from typing import Optional
 
 @dataclass
 class ParkEnterRequest:
-    plate_number:  str
-    spot_id:       int
-    user_type:     str 
-    visit_unit_id: Optional[int] = None
+    plate_number: str
+    spot_id:      int
+    user_type:    str
 
 
 @dataclass

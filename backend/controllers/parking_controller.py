@@ -29,15 +29,6 @@ def get_vehicle():
     return ok(info)
 
 
-@bp.route("/units")
-def get_units():
-    lot_id = request.args.get("lot_id", type=int)
-    if lot_id is None:
-        return err("lot_id는 필수입니다.")
-    units = resident_dao.find_units_by_lot(lot_id)
-    return ok(units)
-
-
 @bp.route("/park/enter", methods=["POST"])
 def enter():
     data         = request.get_json(silent=True) or {}
@@ -46,7 +37,6 @@ def enter():
     user_type    = data.get("user_type")
     is_disabled  = bool(data.get("is_disabled", False))
     is_ev        = bool(data.get("is_ev", False))
-    visit_unit_id = data.get("visit_unit_id")
 
     if not plate_number or spot_id is None or not user_type:
         return err("plate_number, spot_id, user_type은 필수입니다.")
@@ -59,7 +49,6 @@ def enter():
             plate_number=plate_number,
             spot_id=int(spot_id),
             user_type=user_type,
-            visit_unit_id=visit_unit_id,
         )
         parking_service.enter(req)
 
