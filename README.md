@@ -2,8 +2,6 @@
 
 백화점 + 아파트 복합 시설 통합 주차 관리 시스템
 
-Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
-
 ---
 
 ## 프로젝트 개요
@@ -33,7 +31,7 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 | 입주민 | 무료 | 관리비 전월 미납 시 입차 차단 |
 | 방문객 | 30분당 3,000원 | 방문 세대 ID 필요 |
 
-### 공통 — 차량 특성별 적용
+### 공통 - 차량 특성별 적용
 
 | 차량 유형 | 적용 | 비고 |
 |-----------|------|------|
@@ -46,10 +44,11 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 
 ### 메인
 
-<img width="1549" height="942" alt="스크린샷 2026-05-26 173814" src="https://github.com/user-attachments/assets/948ddc4c-3ae4-4695-afd2-cc0d890abd34" />
+![메인 화면](docs/screenshots/main.png)
 
+### 입차 - 주차장 선택 후 평면도에서 자리 확인 및 입차
 
-### 입차 — 주차장 선택 후 평면도에서 자리 확인 및 입차
+4초마다 자리 상태를 자동 갱신합니다. 내가 선택한 자리를 다른 사람이 먼저 차지하면 빈 자리로 자동 재배정됩니다.
 
 ![입차 화면](docs/screenshots/enter.png)
 
@@ -68,7 +67,7 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 
 ### ERD
 
-![ERD](docs/screenshots/erd.png)
+![erd](docs/screenshots/erd.png)
 
 ### 테이블 구조
 
@@ -86,6 +85,8 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 | `SeasonPass` | 직원 정기권 |
 | `AppUser` | 관리자 계정 (비밀번호는 MySQL SHA2-256 해싱) |
 
+![테이블 구조](docs/screenshots/schema.png)
+
 ### 저장 프로시저
 
 입차와 출차+정산 로직을 트랜잭션으로 묶어 처리합니다.  
@@ -93,9 +94,9 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 
 **`sp_park_enter`** — 입차 처리
 
-1. 자리 점유 여부 확인
-2. 장애인/전기차 전용 자리 차량 검증
-3. 입주민이면 관리비 미납 확인 (전월까지 미납 있으면 차단)
+1. 자리 점유 여부 확인 (`FOR UPDATE`로 행 잠금 — 동시 입차 시 같은 자리 중복 배정 방지)
+2. user_type 검증 (입주민은 아파트만, 직원은 백화점만)
+3. 장애인/전기차 전용 자리 차량 검증
 4. `ParkingRecord` 삽입
 
 **`sp_park_exit`** — 출차 + 정산
@@ -104,8 +105,9 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 2. 할인 사유 결정 (정기권 직원 → 입주민 → 장애인 → 일반)
 3. `Payment` 삽입
 
+![프로시저](docs/screenshots/procedures.png)
 
-### 트리거 (7개)
+### 트리거 (8개)
 
 | 트리거 | 시점 | 설명 |
 |--------|------|------|
@@ -114,6 +116,7 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 | `trg_no_double_entry` | BEFORE INSERT ParkingRecord | 같은 차량 이중 입차 차단 |
 | `trg_block_unpaid_resident` | BEFORE INSERT ParkingRecord | 관리비 미납 입주민 입차 차단 |
 | `trg_payment_consistency` | BEFORE INSERT Payment | 할인율 및 최종금액 일관성 검증 |
+| `trg_payment_consistency_update` | BEFORE UPDATE Payment | 결제 수정 시 동일 일관성 검증 |
 | `trg_season_pass_expire_insert` | BEFORE INSERT SeasonPass | 만료일 지난 정기권 비활성 처리 |
 | `trg_season_pass_expire_update` | BEFORE UPDATE SeasonPass | 정기권 기간 변경 시 활성 상태 재계산 |
 
@@ -145,8 +148,6 @@ Flask, PyMySQL, MySQL 8.0, HTML/CSS/JS
 ![인덱스 목록](docs/screenshots/indexes.png)
 
 ---
-
-
 
 DB 계정은 두 개로 분리되어 있습니다.  
 `parking_user` — 입차/출차 등 일반 사용자 요청 (SELECT, EXECUTE만 가능)  
@@ -226,5 +227,3 @@ python app.py
 **B 아파트 주차장 (Lot 2)**
 - 지하 1층, P-Y구역, 구역당 100자리 (일반 84 + 장애인 8 + 전기차 8)
 - 총 1,000자리
-
-
