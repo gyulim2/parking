@@ -16,11 +16,12 @@ def get_connection(role: str = "user"):
         password = os.getenv("DB_PASSWORD") or os.getenv("MYSQLPASSWORD", "")
 
     kwargs = dict(
-        user        = user,
-        password    = password,
-        database    = os.getenv("DB_NAME") or os.getenv("MYSQLDATABASE", "parking_db"),
-        charset     = "utf8mb4",
-        cursorclass = pymysql.cursors.DictCursor,
+        user         = user,
+        password     = password,
+        database     = os.getenv("DB_NAME") or os.getenv("MYSQLDATABASE", "parking_db"),
+        charset      = "utf8mb4",
+        cursorclass  = pymysql.cursors.DictCursor,
+        init_command = "SET time_zone = '+09:00'",
     )
 
     unix_socket = os.getenv("DB_SOCKET", "")
