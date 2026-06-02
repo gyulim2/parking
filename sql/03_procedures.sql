@@ -18,6 +18,7 @@ BEGIN
     DECLARE v_lot_type     VARCHAR(20);
     DECLARE v_is_disabled  BOOLEAN;
     DECLARE v_is_ev        BOOLEAN;
+    DECLARE v_unit_id      INT;
     DECLARE v_reg_count    INT;
 
     -- 오류 시 롤백 후 호출자에게 예외 재전파
