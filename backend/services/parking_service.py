@@ -1,11 +1,10 @@
 from __future__ import annotations
 from config import get_connection
 from dto.parking_dto import ParkEnterRequest, ParkExitRequest, ParkingRecordDTO
-from dao import parking_record_dao, parking_spot_dao, payment_dao, season_pass_dao
+from dao import parking_record_dao, payment_dao, season_pass_dao
 
 
 def upsert_vehicle(plate_number: str, is_disabled: bool, is_ev: bool) -> None:
-    # 미등록 차량이면 Vehicle에 추가, 이미 있으면 DB 값 그대로 유지
     conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:

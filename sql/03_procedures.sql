@@ -10,7 +10,7 @@ CREATE PROCEDURE sp_park_enter(
     IN  p_plate_number  VARCHAR(20),
     IN  p_spot_id       INT,
     IN  p_visit_unit_id INT,
-    IN  p_user_type     ENUM('employee', 'resident', 'general')
+    IN  p_user_type     ENUM('employee', 'resident', 'visitor', 'general')
 )
 BEGIN
     DECLARE v_is_occupied  BOOLEAN;
@@ -18,9 +18,6 @@ BEGIN
     DECLARE v_lot_type     VARCHAR(20);
     DECLARE v_is_disabled  BOOLEAN;
     DECLARE v_is_ev        BOOLEAN;
-    DECLARE v_unit_id      INT;
-    DECLARE v_unpaid_count INT;
-    DECLARE v_this_month   DATE;
     DECLARE v_reg_count    INT;
 
     -- 오류 시 롤백 후 호출자에게 예외 재전파
@@ -92,23 +89,6 @@ BEGIN
     IF v_spot_type = 'ev' AND v_is_ev = FALSE THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = '전기차 전용 자리입니다.';
-    END IF;
-
-    -- 관리비 미납 확인: 전월까지만 체크, 당월 미납은 허용
-    -- (v_unit_id는 위 resident 검증 단계에서 이미 조회됨)
-    IF p_user_type = 'resident' THEN
-        SET v_this_month = DATE_FORMAT(CURDATE(), '%Y-%m-01');
-
-        SELECT COUNT(*) INTO v_unpaid_count
-          FROM AptMonthlyPayment
-         WHERE unit_id       = v_unit_id
-           AND is_paid       = FALSE
-           AND billing_month < v_this_month;
-
-        IF v_unpaid_count > 0 THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = '관리비 미납 세대는 입차할 수 없습니다.';
-        END IF;
     END IF;
 
     INSERT INTO ParkingRecord (plate_number, spot_id, visit_unit_id, user_type, entry_time)
