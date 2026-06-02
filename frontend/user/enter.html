@@ -190,6 +190,8 @@
 
   let lookupTimer      = null;
   let lookupController = null;  // 진행 중인 차량 조회 요청 취소용
+  let pollTimer        = null;
+  let isPolling        = false;
 
   function isSpotAllowed(spot, isDisabled, isEv) {
     if (spot.spot_type === 'disabled') return isDisabled;
@@ -226,6 +228,7 @@
     clearTimeout(lookupTimer);
     resetVehicleUI();
     loadSpots();
+    startPolling();
 
     // 번호판이 이미 입력돼 있으면 새 lot 기준으로 재조회
     const plate = document.getElementById('plate').value.trim();
@@ -350,6 +353,7 @@
       btn.className = 'floor-btn';
       btn.value     = f < 0 ? `지하${Math.abs(f)}층` : `${f}층`;
       btn.dataset.floor = f;
+      if (f === state.floor) btn.classList.add('active');
       btn.onclick = () => {
         document.querySelectorAll('.floor-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -409,6 +413,43 @@
     }
     // 일반 차량: general 자리만
     return allowed.find(s => s.spot_type === 'general');
+  }
+
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(pollSpots, 4000);
+  }
+
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
+
+  async function pollSpots() {
+    if (!state.lotId || isPolling) return;
+    isPolling = true;
+    try {
+      const res  = await fetch(`${API}/spots?lot_id=${state.lotId}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      state.spots = (json.ok !== undefined) ? json.data : json;
+      renderMap();
+
+      if (!state.spotId) return;
+      const cur = state.spots.find(s => s.spot_id === state.spotId);
+      if (cur && cur.is_occupied) {
+        state.spotId     = null;
+        state.isAutoSpot = false;
+        document.getElementById('ticket-table').style.display = 'none';
+        document.getElementById('auto-msg').style.display     = 'none';
+        checkReady();
+        const msgEl = document.getElementById('msg');
+        msgEl.style.color   = '#e67e22';
+        msgEl.textContent   = '선택하신 자리가 사용 중이 되어 자동으로 다른 자리로 변경됩니다.';
+        if (state.floor !== null) await autoAssignFromFloor(state.floor);
+        else                      await autoAssign();
+      }
+    } catch { /* 폴링 실패는 조용히 무시 */ }
+    finally { isPolling = false; }
   }
 
   function assignSpot(spot) {
@@ -623,6 +664,7 @@
       msgEl.style.color = '#27ae60';
       msgEl.textContent = `입차 완료! 자리 #${state.spotId}로 배정되었습니다.`;
       document.getElementById('btn-enter').disabled = true;
+      stopPolling();
       await loadSpots();
       renderMap();
       setTimeout(() => { window.location.href = '../index.html#user'; }, 1500);
