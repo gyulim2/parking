@@ -10,7 +10,7 @@ CREATE PROCEDURE sp_park_enter(
     IN  p_plate_number  VARCHAR(20),
     IN  p_spot_id       INT,
     IN  p_visit_unit_id INT,
-    IN  p_user_type     ENUM('employee', 'resident', 'visitor', 'general')
+    IN  p_user_type     ENUM('employee', 'resident', 'general')
 )
 BEGIN
     DECLARE v_is_occupied  BOOLEAN;
@@ -77,11 +77,6 @@ BEGIN
                 SET MESSAGE_TEXT = '직원으로 등록되지 않은 차량입니다.';
         END IF;
 
-    ELSEIF p_user_type = 'visitor' THEN
-        IF p_visit_unit_id IS NULL THEN
-            SIGNAL SQLSTATE '45000'
-                SET MESSAGE_TEXT = '방문 차량은 방문 세대를 지정해야 합니다.';
-        END IF;
     END IF;
 
     -- 장애인/전기차 전용 자리 확인
