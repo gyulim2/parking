@@ -58,7 +58,13 @@ def enter():
     except ValueError as e:
         return err(str(e))
     except pymysql.err.OperationalError as e:
-        return err(e.args[1], 400)
+        msg = e.args[1]
+        if isinstance(msg, bytes):
+            msg = msg.decode("utf-8", errors="replace")
+        if '?' in msg and not any('가' <= c <= '힣' for c in msg):
+            msg = "입차 처리 중 오류가 발생했습니다."
+        status = 409 if parking_spot_dao.is_occupied(int(spot_id)) else 400
+        return err(msg, status)
     except Exception as e:
         return err(str(e), 500)
 
@@ -80,7 +86,12 @@ def exit_and_pay():
     except ValueError as e:
         return err(str(e))
     except pymysql.err.OperationalError as e:
-        return err(e.args[1], 400)
+        msg = e.args[1]
+        if isinstance(msg, bytes):
+            msg = msg.decode("utf-8", errors="replace")
+        if '?' in msg and not any('가' <= c <= '힣' for c in msg):
+            msg = "출차 처리 중 오류가 발생했습니다."
+        return err(msg, 400)
     except Exception as e:
         return err(str(e), 500)
 
