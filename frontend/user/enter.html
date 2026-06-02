@@ -655,8 +655,17 @@
       });
       const json = await res.json();
       if (!json.ok) {
-        setMsg(json.error || '입차 처리 오류');
-        document.getElementById('btn-enter').disabled = false;
+        if (json.error && json.error.includes('이미 사용 중인')) {
+          const msgEl = document.getElementById('msg');
+          msgEl.style.color = '#e67e22';
+          msgEl.textContent = '선택한 자리가 방금 사용 중이 되어 다른 자리로 변경합니다.';
+          if (state.floor !== null) await autoAssignFromFloor(state.floor);
+          else                      await autoAssign();
+          document.getElementById('btn-enter').disabled = false;
+        } else {
+          setMsg(json.error || '입차 처리 오류');
+          document.getElementById('btn-enter').disabled = false;
+        }
         return;
       }
 
