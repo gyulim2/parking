@@ -52,14 +52,15 @@
 
 ![입차 화면](docs/screenshots/enter.png)
 
-### 출차 — 번호판 입력 → 주차 시간 + 요금 자동 계산
+### 출차 - 번호판 입력 → 주차 시간 + 요금 자동 계산
 
 ![출차 화면](docs/screenshots/exit.png)
 ![정산 화면](docs/screenshots/exit1.png)
 
-### 관리자 대시보드 — 매출 통계, 시간대별 혼잡도, 입출차 및 결제 이력
+### 관리자 대시보드 - 매출 통계, 시간대별 혼잡도, 입출차 및 결제 이력
 
-![관리자 대시보드](docs/screenshots/dashboard.png)
+![관리자 대시보드1](docs/screenshots/dashboard1.png)
+![관리자 대시보드2](docs/screenshots/dashboard2.png)
 
 ---
 
@@ -90,14 +91,14 @@
 입차와 출차+정산 로직을 트랜잭션으로 묶어 처리합니다.  
 중간에 오류가 나면 자동으로 롤백됩니다.
 
-**`sp_park_enter`** — 입차 처리
+**`sp_park_enter`** - 입차 처리
 
 1. 자리 점유 여부 확인 (`FOR UPDATE`로 행 잠금 — 동시 입차 시 같은 자리 중복 배정 방지)
 2. user_type 검증 (입주민은 아파트만, 직원은 백화점만)
 3. 장애인/전기차 전용 자리 차량 검증
 4. `ParkingRecord` 삽입
 
-**`sp_park_exit`** — 출차 + 정산
+**`sp_park_exit`** - 출차 + 정산
 
 1. `ParkingRecord.exit_time` 업데이트
 2. 주차 시간 계산 (30분 단위, 초 단위 올림, 최소 1단위)
@@ -147,8 +148,8 @@
 ---
 
 DB 계정은 두 개로 분리되어 있습니다.  
-`parking_user` — 입차/출차 등 일반 사용자 요청 (SELECT, EXECUTE만 가능)  
-`parking_admin` — 관리자가 통계 및 이력 조회 (전체 권한)
+`parking_user` - 입차/출차 등 일반 사용자 요청 (SELECT, EXECUTE만 가능)  
+`parking_admin` - 관리자가 통계 및 이력 조회 (전체 권한)
 
 ---
 
