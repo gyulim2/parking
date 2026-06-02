@@ -154,8 +154,9 @@
         fetch(`${API}/records/active?plate_number=${encodeURIComponent(plate)}`),
         fetch(`${API}/vehicle?plate=${encodeURIComponent(plate)}`),
       ]);
+      if (!recRes.ok && recRes.status !== 404) throw new Error(`서버 오류 (${recRes.status})`);
       const recJson = await recRes.json();
-      const vehJson = await vehRes.json();
+      const vehJson = vehRes.ok ? await vehRes.json() : null;
 
       if (!recJson.ok) {
         const errMsg = recJson.error || '주차 중인 차량이 없습니다.';

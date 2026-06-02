@@ -188,7 +188,8 @@
     entryTime  : null,
   };
 
-  let lookupTimer = null;
+  let lookupTimer      = null;
+  let lookupController = null;  // 진행 중인 차량 조회 요청 취소용
 
   function isSpotAllowed(spot, isDisabled, isEv) {
     if (spot.spot_type === 'disabled') return isDisabled;
@@ -220,8 +221,15 @@
     document.getElementById('floor-section').style.display =
       state.lotId === 1 ? '' : 'none';
 
+    // 진행 중인 차량 조회 취소 후 UI 리셋
+    if (lookupController) { lookupController.abort(); lookupController = null; }
+    clearTimeout(lookupTimer);
     resetVehicleUI();
     loadSpots();
+
+    // 번호판이 이미 입력돼 있으면 새 lot 기준으로 재조회
+    const plate = document.getElementById('plate').value.trim();
+    if (plate.length >= 7) lookupVehicle(plate);
   }
 
   // 번호판 7자 이상 입력되면 600ms 후 차량 조회
@@ -233,16 +241,23 @@
   });
 
   async function lookupVehicle(plate) {
+    // 이전 요청 취소
+    if (lookupController) lookupController.abort();
+    lookupController = new AbortController();
+    const signal = lookupController.signal;
+
     document.getElementById('user-type-display').textContent = '조회 중...';
     try {
-      const res  = await fetch(`${API}/vehicle?plate=${encodeURIComponent(plate)}`);
+      const res  = await fetch(`${API}/vehicle?plate=${encodeURIComponent(plate)}`, { signal });
       const json = await res.json();
       state.vehicle = (json.ok !== undefined) ? json.data : json;
-    } catch {
+    } catch (e) {
+      if (e.name === 'AbortError') return;  // 취소된 요청은 무시
       setMsg('서버에 연결할 수 없습니다.');
       document.getElementById('user-type-display').textContent = '';
       return;
     }
+    lookupController = null;
     updateVehicleUI();
   }
 
@@ -308,10 +323,11 @@
   async function loadSpots() {
     try {
       const res  = await fetch(`${API}/spots?lot_id=${state.lotId}`);
+      if (!res.ok) throw new Error(`서버 오류 (${res.status})`);
       const json = await res.json();
       state.spots = (json.ok !== undefined) ? json.data : json;
     } catch {
-      setMsg('서버에 연결할 수 없습니다.');
+      setMsg('자리 정보를 불러올 수 없습니다.');
       return;
     }
     buildFloorButtons();
@@ -345,8 +361,10 @@
   }
 
   // 선택한 층에서 빈 자리를 찾아 자동 배정
-  function autoAssignFromFloor(floor) {
+  async function autoAssignFromFloor(floor) {
     state.floor = floor;
+    await loadSpots();
+    renderMap();
     const isDisabled = document.getElementById('cb-disabled').checked;
     const isEv       = document.getElementById('cb-ev').checked;
 
@@ -362,7 +380,9 @@
     assignSpot(pickSpot(avail, isDisabled, isEv));
   }
 
-  function autoAssign() {
+  async function autoAssign() {
+    await loadSpots();
+    renderMap();
     const isDisabled = document.getElementById('cb-disabled').checked;
     const isEv       = document.getElementById('cb-ev').checked;
 
@@ -570,6 +590,9 @@
       return;
     }
 
+    // 중복 클릭 방지: fetch 전에 즉시 비활성화
+    document.getElementById('btn-enter').disabled = true;
+
     const veh        = state.vehicle;
     const isDisabled = document.getElementById('cb-disabled').checked;
     const isEv       = document.getElementById('cb-ev').checked;
@@ -590,15 +613,22 @@
         }),
       });
       const json = await res.json();
-      if (!json.ok) { setMsg(json.error || '입차 처리 오류'); return; }
+      if (!json.ok) {
+        setMsg(json.error || '입차 처리 오류');
+        document.getElementById('btn-enter').disabled = false;
+        return;
+      }
 
       const msgEl = document.getElementById('msg');
       msgEl.style.color = '#27ae60';
       msgEl.textContent = `입차 완료! 자리 #${state.spotId}로 배정되었습니다.`;
       document.getElementById('btn-enter').disabled = true;
+      await loadSpots();
+      renderMap();
       setTimeout(() => { window.location.href = '../index.html#user'; }, 1500);
     } catch {
       alert('서버에 연결할 수 없습니다.');
+      document.getElementById('btn-enter').disabled = false;
     }
   }
 
