@@ -364,6 +364,10 @@
     }
   }
 
+  // 서버에서 온 문자열(번호판 등)은 사용자 입력이므로 innerHTML에 넣기 전에 반드시 이스케이프
+  const esc = v => String(v ?? '').replace(/[&<>"']/g,
+    c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
   function renderPayRows(tbody, countEl, data, isMock = false) {
     countEl.textContent = `총 ${data.length}건` + (isMock ? ' (mock)' : '');
     if (!data.length) {
@@ -374,7 +378,7 @@
       const discPct = Math.round((r.discount_rate ?? 0) * 100);
       return `<tr>
         <td>${r.payment_id}</td>
-        <td><b>${r.plate_number}</b></td>
+        <td><b>${esc(r.plate_number)}</b></td>
         <td>${r.entry_time}</td>
         <td>${r.exit_time}</td>
         <td style="text-align:right">${(r.raw_fee ?? 0).toLocaleString()}원</td>
@@ -406,8 +410,8 @@
       if (!data.length) { tbody.innerHTML = '<tr><td colspan="7">입차 이력이 없습니다.</td></tr>'; return; }
       tbody.innerHTML = data.map(r => `<tr>
         <td>${r.record_id}</td>
-        <td><b>${r.plate_number}</b></td>
-        <td>${r.lot_name}</td>
+        <td><b>${esc(r.plate_number)}</b></td>
+        <td>${esc(r.lot_name)}</td>
         <td>#${r.spot_id}</td>
         <td>${USER_TYPE_KO[r.user_type] ?? r.user_type}</td>
         <td>${r.entry_time}</td>
@@ -438,8 +442,8 @@
           : `${mins}분`;
         return `<tr>
           <td>${r.record_id}</td>
-          <td><b>${r.plate_number}</b></td>
-          <td>${r.lot_name}</td>
+          <td><b>${esc(r.plate_number)}</b></td>
+          <td>${esc(r.lot_name)}</td>
           <td>${r.entry_time}</td>
           <td>${r.exit_time}</td>
           <td>${duration}</td>

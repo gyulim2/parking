@@ -5,17 +5,18 @@ from dao import parking_record_dao, payment_dao, season_pass_dao
 
 
 def upsert_vehicle(plate_number: str, is_disabled: bool, is_ev: bool) -> None:
+    """미등록 차량만 자가신고 값으로 등록한다. 이미 있으면 DB 값을 유지한다.
+
+    SELECT 후 INSERT 방식은 같은 번호판이 동시에 들어오면 중복 키 오류가 나므로
+    INSERT IGNORE로 원자적으로 처리한다.
+    """
     conn = get_connection(role="admin")
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT 1 FROM Vehicle WHERE plate_number = %s", (plate_number,)
+                "INSERT IGNORE INTO Vehicle (plate_number, is_disabled, is_ev) VALUES (%s, %s, %s)",
+                (plate_number, is_disabled, is_ev),
             )
-            if cur.fetchone() is None:
-                cur.execute(
-                    "INSERT INTO Vehicle (plate_number, is_disabled, is_ev) VALUES (%s, %s, %s)",
-                    (plate_number, is_disabled, is_ev),
-                )
         conn.commit()
     finally:
         conn.close()

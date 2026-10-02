@@ -1,10 +1,14 @@
+import logging
+
 from flask import Blueprint, request
 import pymysql
 
 from dto.parking_dto import ParkEnterRequest, ParkExitRequest
 from dao import resident_dao, parking_spot_dao
 from services import parking_service
-from utils import ok, err
+from utils import ok, err, is_valid_plate
+
+log = logging.getLogger(__name__)
 
 bp = Blueprint("parking", __name__, url_prefix="/api")
 
@@ -23,8 +27,8 @@ def get_spots():
 @bp.route("/vehicle")
 def get_vehicle():
     plate = request.args.get("plate", "").strip()
-    if not plate:
-        return err("plate는 필수입니다.")
+    if not is_valid_plate(plate):
+        return err("번호판 형식이 올바르지 않습니다. (예: 12가3456)")
     info = resident_dao.find_vehicle_info(plate)
     return ok(info)
 
@@ -40,6 +44,8 @@ def enter():
 
     if not plate_number or spot_id is None or not user_type:
         return err("plate_number, spot_id, user_type은 필수입니다.")
+    if not is_valid_plate(plate_number):
+        return err("번호판 형식이 올바르지 않습니다. (예: 12가3456)")
 
     try:
         # 미등록 차량이면 자가신고로 INSERT, 등록 차량이면 DB 값 유지
@@ -65,8 +71,9 @@ def enter():
             msg = "입차 처리 중 오류가 발생했습니다."
         status = 409 if parking_spot_dao.is_occupied(int(spot_id)) else 400
         return err(msg, status)
-    except Exception as e:
-        return err(str(e), 500)
+    except Exception:
+        log.exception("요청 처리 중 예기치 못한 오류")
+        return err("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", 500)
 
 
 @bp.route("/park/exit", methods=["POST"])
@@ -92,15 +99,16 @@ def exit_and_pay():
         if '?' in msg and not any('가' <= c <= '힣' for c in msg):
             msg = "출차 처리 중 오류가 발생했습니다."
         return err(msg, 400)
-    except Exception as e:
-        return err(str(e), 500)
+    except Exception:
+        log.exception("요청 처리 중 예기치 못한 오류")
+        return err("서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.", 500)
 
 
 @bp.route("/records/active")
 def get_active():
     plate = request.args.get("plate_number", "").strip()
-    if not plate:
-        return err("plate_number는 필수입니다.")
+    if not is_valid_plate(plate):
+        return err("번호판 형식이 올바르지 않습니다. (예: 12가3456)")
 
     record = parking_service.find_active_record(plate)
     if record is None:
